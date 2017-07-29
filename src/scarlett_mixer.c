@@ -156,7 +156,7 @@ static int open_mixer (RobTkApp* ui, const char* card)
 		c->elem = elem;
 		c->name = strdup (snd_mixer_selem_get_name (elem));
 
-#if 0
+#if 0 // Print Controls
 		printf ("%d %s", i, c->name);
 		if (snd_mixer_selem_is_enumerated (elem)) { printf (", ENUM"); }
 		if (snd_mixer_selem_has_playback_switch (elem)) { printf (", PBS"); }
@@ -246,8 +246,12 @@ static int get_enum (Mctrl* c)
 
 /* *****************************************************************************
  * Mapping --  TODO build dynamically support other Scarlett devices
+ *
+ * NOTE: these are numerically hardcoded. see `amixer -D hw:2 control`
+ * and #if'd "Print Controls" debug dump above
  */
 
+/* mixer-matrix 18 x 6  colums(src) x rows (dest) */
 static Mctrl* matrix_ctrl_cr (RobTkApp* ui, unsigned int c, unsigned int r)
 {
 	// TODO build dynamically from name "Matrix 01 Mix A"  [01..18 A..F]
@@ -258,6 +262,7 @@ static Mctrl* matrix_ctrl_cr (RobTkApp* ui, unsigned int c, unsigned int r)
 	return &ui->ctrl[ctrl_id];
 }
 
+/* wrapper to the above, linear lookup */
 static Mctrl* matrix_ctrl_n (RobTkApp* ui, unsigned int n)
 {
 	unsigned c = n % 6;
@@ -265,6 +270,7 @@ static Mctrl* matrix_ctrl_n (RobTkApp* ui, unsigned int n)
 	return matrix_ctrl_cr (ui, c, r);
 }
 
+/* matrix input selector (per row)*/
 static Mctrl* matrix_sel (RobTkApp* ui, unsigned int r)
 {
 	if (r > 17) {
@@ -274,6 +280,7 @@ static Mctrl* matrix_sel (RobTkApp* ui, unsigned int r)
 	return &ui->ctrl[ctrl_id];
 }
 
+/* Input/Capture selector */
 static Mctrl* src_sel (RobTkApp* ui, unsigned int r)
 {
 	if (r > 17) {
@@ -283,6 +290,7 @@ static Mctrl* src_sel (RobTkApp* ui, unsigned int r)
 	return &ui->ctrl[ctrl_id];
 }
 
+/* Output Gains */
 static Mctrl* out_gain (RobTkApp* ui, unsigned int c)
 {
 	switch (c) {
@@ -293,6 +301,7 @@ static Mctrl* out_gain (RobTkApp* ui, unsigned int c)
 	return NULL;
 }
 
+/* Output Bus assignment (matrix-out to master) */
 static Mctrl* out_sel (RobTkApp* ui, unsigned int c)
 {
 	switch (c) {
@@ -306,6 +315,7 @@ static Mctrl* out_sel (RobTkApp* ui, unsigned int c)
 	return NULL;
 }
 
+/* Hi-Z switches */
 static Mctrl* hiz (RobTkApp* ui, unsigned int c)
 {
 	switch (c) {
@@ -315,6 +325,7 @@ static Mctrl* hiz (RobTkApp* ui, unsigned int c)
 	return NULL;
 }
 
+/* master gain */
 static Mctrl* mst_gain (RobTkApp* ui)
 {
 	return &ui->ctrl[0];
