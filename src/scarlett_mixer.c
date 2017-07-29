@@ -59,6 +59,7 @@ typedef struct {
 
 	RobTkDial*   mst_gain;
 	RobTkCBtn*   btn_hiz[2];
+	RobTkPBtn*   btn_reset;
 
 	RobTkLbl*    heading[3];
 
@@ -341,6 +342,61 @@ static float knob_to_db (float v)
 /* *****************************************************************************
  * Callbacks
  */
+
+static bool cb_btn_reset (RobWidget* w, void* handle) {
+	RobTkApp* ui = (RobTkApp*)handle;
+	/* toggle all values (force change) */
+
+	for (int r = 0; r < 18; ++r) {
+		Mctrl* sctrl = src_sel (ui, r);
+		int mcnt = snd_mixer_selem_get_enum_items (sctrl->elem);
+		const int val = robtk_select_get_value (ui->src_sel[r]);
+		set_enum (sctrl, (val + 1) % mcnt);
+		set_enum (sctrl, val);
+	}
+	for (int r = 0; r < 18; ++r) {
+		Mctrl* sctrl = matrix_sel (ui, r);
+		int mcnt = snd_mixer_selem_get_enum_items (sctrl->elem);
+		const int val = robtk_select_get_value (ui->mtx_sel[r]);
+		set_enum (sctrl, (val + 1) % mcnt);
+		set_enum (sctrl, val);
+	}
+	for (unsigned int o = 0; o < 6; ++o) {
+		Mctrl* sctrl = out_sel (ui, o);
+		int mcnt = snd_mixer_selem_get_enum_items (sctrl->elem);
+		const int val = robtk_select_get_value (ui->out_sel[o]);
+		set_enum (sctrl, (val + 1) % mcnt);
+		set_enum (sctrl, val);
+	}
+
+	for (int r = 0; r < 18; ++r) {
+		for (unsigned int c = 0; c < 6; ++c) {
+			unsigned int n = r * 6 + c;
+			Mctrl* ctrl = matrix_ctrl_cr (ui, c, r);
+			const float val = knob_to_db (robtk_dial_get_value (ui->mtx_gain[n]));
+			if (val == -128) {
+				set_dB (ctrl, 127);
+			} else {
+				set_dB (ctrl, -128);
+			}
+			set_dB (ctrl, val);
+		}
+	}
+	for (unsigned int n = 0; n < 3; ++n) {
+		Mctrl* ctrl = out_gain (ui, n);
+		const bool mute = robtk_dial_get_state (ui->out_gain[n]) == 1;
+		const float val = knob_to_db (robtk_dial_get_value (ui->out_gain[n]));
+		set_mute (ctrl, !mute);
+		set_mute (ctrl, mute);
+		if (val == -128) {
+			set_dB (ctrl, 127);
+		} else {
+			set_dB (ctrl, -128);
+		}
+		set_dB (ctrl, val);
+	}
+	return TRUE;
+}
 
 static bool cb_set_hiz (RobWidget* w, void* handle) {
 	RobTkApp* ui = (RobTkApp*)handle;
@@ -804,6 +860,10 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	rob_table_attach (ui->output, robtk_select_widget (ui->out_sel[4]), 8, 10, r + 0, r + 1, 2, 2, RTK_SHRINK, RTK_SHRINK);
 	rob_table_attach (ui->output, robtk_select_widget (ui->out_sel[5]), 9, 11, r + 1, r + 2, 2, 2, RTK_SHRINK, RTK_SHRINK);
 
+	/* re-send */
+	ui->btn_reset = robtk_pbtn_new ("R");
+	rob_table_attach (ui->output, robtk_pbtn_widget (ui->btn_reset), 10, 11, r + 0, r + 1, 2, 2, RTK_SHRINK, RTK_SHRINK);
+	robtk_pbtn_set_callback_up (ui->btn_reset, cb_btn_reset, ui);
 
 	ui->sep_h = robtk_sep_new (TRUE);
 
