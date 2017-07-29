@@ -1,10 +1,15 @@
-CFLAGS=-g -Wall -Wno-unused-function
+#!/usr/bin/make -f
+
+CFLAGS?=-g -Wall -Wno-unused-function
 RW?=robtk/
 
 APPTITLE=Scarlett 18i6 Mixer
 APP_SRC=src/scarlett_mixer.c
-
 PUGL_SRC=$(RW)pugl/pugl_x11.c
+
+ifeq ($(shell pkg-config --exists cairo pangocairo pango glu gl alsa || echo no), no)
+  $(error "build dependencies are not satisfied")
+endif
 
 GLUICFLAGS=-I. -I$(RW)
 GLUICFLAGS+=`pkg-config --cflags cairo pango lv2 glu alsa` -pthread
@@ -12,6 +17,7 @@ GLUICFLAGS+=-DDEFAULT_NOT_ONTOP
 
 LOADLIBES=`pkg-config --libs $(PKG_UI_FLAGS) cairo pangocairo pango glu gl alsa` -lX11
 
+###############################################################################
 all: scarlett-mixer
 
 # TODO source $(RW)robtk.mk, add dependencies
