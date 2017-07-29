@@ -36,14 +36,17 @@
  * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/sound/usb/mixer_scarlett.c#n635
  */
 
-/* scarlett matrix */
+/* scarlett matrix size */
 #define SMI 18 // matrix ins
 #define SMO 6  // matrix outs
 
-/* scarlett I/O */
+/* scarlett I/O config */
 #define SIN 18 // inputs (capture select)
 #define SOUT 6 // outputs assigns (=?= matrix outs)
 #define SMST 3 // output gain (stereo gain controls w/mute  =?= SOUT / 2)
+
+#define DEVICE_NAME "Scarlett 18i6 USB"
+
 
 typedef struct {
 	snd_mixer_elem_t* elem;
@@ -90,6 +93,141 @@ typedef struct {
 
 
 /* *****************************************************************************
+ * Mapping for the 18i6
+ *
+ * NOTE: these are numerically hardcoded. see `amixer -D hw:2 control`
+ * and #if'd "Print Controls" debug dump below
+ */
+
+/* mixer-matrix ; colums(src) x rows (dest) */
+static Mctrl* matrix_ctrl_cr (RobTkApp* ui, unsigned int c, unsigned int r)
+{
+	/* Matrix 01 Mix A
+	 *  ..
+	 * Matrix 18 Mix F
+	 */
+	if (r >= SMI || c >= SMO) {
+		return NULL;
+	}
+	unsigned int ctrl_id = 33 + r * 7 + c;
+	return &ui->ctrl[ctrl_id];
+}
+
+/* wrapper to the above, linear lookup */
+static Mctrl* matrix_ctrl_n (RobTkApp* ui, unsigned int n)
+{
+	unsigned c = n % SMO;
+	unsigned r = n / SMO;
+	return matrix_ctrl_cr (ui, c, r);
+}
+
+/* matrix input selector (per row)*/
+static Mctrl* matrix_sel (RobTkApp* ui, unsigned int r)
+{
+	if (r >= SMI) {
+		return NULL;
+	}
+	/* Matrix 01 Input, ENUM
+	 *  ..
+	 * Matrix 18 Input, ENUM
+	 */
+	unsigned int ctrl_id = 32 + r * 7;
+	return &ui->ctrl[ctrl_id];
+}
+
+/* Input/Capture selector */
+static Mctrl* src_sel (RobTkApp* ui, unsigned int r)
+{
+	if (r >= SIN) {
+		return NULL;
+	}
+	/* Input Source 01, ENUM
+	 *  ..
+	 * Input Source 18, ENUM
+	 */
+	unsigned int ctrl_id = 13 + r;
+	return &ui->ctrl[ctrl_id];
+}
+
+static int src_sel_default (unsigned int r, int max_values)
+{
+	/* 0 <= r < SIN;  return 0 .. max_values - 1 */
+	return (r + 7) % max_values; // XXX hardcoded defaults. offset 7: "Analog 1"
+}
+
+/* Output Gains */
+static Mctrl* out_gain (RobTkApp* ui, unsigned int c)
+{
+	switch (c) {
+		case 0: return &ui->ctrl[1]; /* Master 1 (Monitor), PBS */
+		case 1: return &ui->ctrl[4]; /* Master 2 (Headphone), PBS */
+		case 2: return &ui->ctrl[7]; /* Master 3 (SPDIF), PBS */
+	}
+	return NULL;
+}
+
+static const char* out_gain_label (int n)
+{
+	switch (n) {
+		case 0:
+			return "Monitor";
+		case 1:
+			return "Phones";
+		case 2:
+			return "ADAT";
+		default:
+			return "??";
+	}
+}
+
+/* Output Bus assignment (matrix-out to master) */
+static Mctrl* out_sel (RobTkApp* ui, unsigned int c)
+{
+	switch (c) {
+		case 0: return &ui->ctrl[2]; /* Master 1L (Monitor) Source, ENUM */
+		case 1: return &ui->ctrl[3]; /* Master 1R (Monitor) Source, ENUM */
+		case 2: return &ui->ctrl[5]; /* Master 2L (Headphone) Source, ENUM */
+		case 3: return &ui->ctrl[6]; /* Master 2R (Headphone) Source, ENUM */
+		case 4: return &ui->ctrl[8]; /* Master 3L (SPDIF) Source, ENUM */
+		case 5: return &ui->ctrl[9]; /* Master 3R (SPDIF) Source, ENUM */
+	}
+	return NULL;
+}
+
+static int out_sel_default (unsigned int c)
+{
+	/* 0 <= c < SOUT; */
+	return 25 + c; // XXX hardcoded defaults. offset 25: "Mix 1"
+}
+
+/* Hi-Z switches */
+static Mctrl* hiz (RobTkApp* ui, unsigned int c)
+{
+	switch (c) {
+		case 0: return &ui->ctrl[11]; /* Input 1 Impedance, ENUM */
+		case 1: return &ui->ctrl[12]; /* Input 2 Impedance, ENUM */
+	}
+	return NULL;
+}
+
+/* master gain */
+static Mctrl* mst_gain (RobTkApp* ui)
+{
+	return &ui->ctrl[0]; /* Master, PBS */
+}
+
+
+/* *****************************************************************************
+ * *****************************************************************************
+ *
+ * CODE FROM HERE ON SHOULD BE GENERIC
+ *
+ * *****************************************************************************
+ * ****************************************************************************/
+
+
+
+/* *****************************************************************************
  * Alsa Mixer Interface
  */
 
@@ -115,8 +253,8 @@ static int open_mixer (RobTkApp* ui, const char* card)
 	const char* card_name = snd_ctl_card_info_get_name (card_info);
 	snd_ctl_close (hctl);
 
-	if (!card_name || strcmp (card_name, "Scarlett 18i6 USB")) {
-		fprintf (stderr, "Device '%s' is a '%s' - expected 'Scarlett 18i6 USB'\n", card, card_name ? card_name : "unknown");
+	if (!card_name || strcmp (card_name, DEVICE_NAME)) {
+		fprintf (stderr, "Device '%s' is a '%s' - expected '%s'\n", card, card_name ? card_name : "unknown", DEVICE_NAME);
 		return -1;
 	}
 
@@ -259,119 +397,6 @@ static int get_enum (Mctrl* c)
 }
 
 /* *****************************************************************************
- * Mapping --  TODO build dynamically support other Scarlett devices
- *
- * NOTE: these are numerically hardcoded. see `amixer -D hw:2 control`
- * and #if'd "Print Controls" debug dump above
- */
-
-/* mixer-matrix 18 x 6  colums(src) x rows (dest) */
-static Mctrl* matrix_ctrl_cr (RobTkApp* ui, unsigned int c, unsigned int r)
-{
-	// TODO build dynamically from name "Matrix 01 Mix A"  [01..18 A..F]
-	if (r >= SMI || c >= SMO) {
-		return NULL;
-	}
-	unsigned int ctrl_id = 33 + r * 7 + c;
-	return &ui->ctrl[ctrl_id];
-}
-
-/* wrapper to the above, linear lookup */
-static Mctrl* matrix_ctrl_n (RobTkApp* ui, unsigned int n)
-{
-	unsigned c = n % SMO;
-	unsigned r = n / SMO;
-	return matrix_ctrl_cr (ui, c, r);
-}
-
-/* matrix input selector (per row)*/
-static Mctrl* matrix_sel (RobTkApp* ui, unsigned int r)
-{
-	if (r >= SMI) {
-		return NULL;
-	}
-	unsigned int ctrl_id = 32 + r * 7;
-	return &ui->ctrl[ctrl_id];
-}
-
-/* Input/Capture selector */
-static Mctrl* src_sel (RobTkApp* ui, unsigned int r)
-{
-	if (r >= SIN) {
-		return NULL;
-	}
-	unsigned int ctrl_id = 13 + r;
-	return &ui->ctrl[ctrl_id];
-}
-
-static int src_sel_default (unsigned int r, int max_values)
-{
-	/* 0 <= r < SIN;  return 0 .. max_values - 1 */
-	return (r + 7) % max_values; // XXX hardcoded defaults. offset 7: "Analog 1"
-}
-
-/* Output Gains */
-static Mctrl* out_gain (RobTkApp* ui, unsigned int c)
-{
-	switch (c) {
-		case 0: return &ui->ctrl[1];
-		case 1: return &ui->ctrl[4];
-		case 2: return &ui->ctrl[7];
-	}
-	return NULL;
-}
-
-static const char* out_gain_label (int n)
-{
-	switch (n) {
-		case 0:
-			return "Monitor";
-		case 1:
-			return "Monitor";
-		case 2:
-			return "Monitor";
-		default:
-			return "??";
-	}
-}
-
-/* Output Bus assignment (matrix-out to master) */
-static Mctrl* out_sel (RobTkApp* ui, unsigned int c)
-{
-	switch (c) {
-		case 0: return &ui->ctrl[2];
-		case 1: return &ui->ctrl[3];
-		case 2: return &ui->ctrl[5];
-		case 3: return &ui->ctrl[6];
-		case 4: return &ui->ctrl[8];
-		case 5: return &ui->ctrl[9];
-	}
-	return NULL;
-}
-
-static int out_sel_default (unsigned int c)
-{
-	/* 0 <= c < SOUT; */
-	return 25 + c; // XXX hardcoded defaults. offset 25: "Mix 1" 
-}
-
-/* Hi-Z switches */
-static Mctrl* hiz (RobTkApp* ui, unsigned int c)
-{
-	switch (c) {
-		case 0: return &ui->ctrl[11];
-		case 1: return &ui->ctrl[12];
-	}
-	return NULL;
-}
-
-/* master gain */
-static Mctrl* mst_gain (RobTkApp* ui)
-{
-	return &ui->ctrl[0];
-}
-
-/* *****************************************************************************
  * Helpers
  */
 
@@ -463,7 +488,7 @@ static bool cb_src_sel (RobWidget* w, void* handle) {
 	RobTkApp* ui = (RobTkApp*)handle;
 	if (ui->disable_signals) return TRUE;
 	unsigned int n;
-	memcpy (&n, w->name, sizeof (unsigned int)); // hack alert
+	memcpy (&n, w->name, sizeof (unsigned int));
 	const float val = robtk_select_get_value (ui->src_sel[n]);
 	set_enum (src_sel (ui, n), val);
 	return TRUE;
@@ -473,7 +498,7 @@ static bool cb_mtx_src (RobWidget* w, void* handle) {
 	RobTkApp* ui = (RobTkApp*)handle;
 	if (ui->disable_signals) return TRUE;
 	unsigned int n;
-	memcpy (&n, w->name, sizeof (unsigned int)); // hack alert
+	memcpy (&n, w->name, sizeof (unsigned int));
 	const float val = robtk_select_get_value (ui->mtx_sel[n]);
 	set_enum (matrix_sel (ui, n), val);
 	return TRUE;
@@ -482,7 +507,7 @@ static bool cb_mtx_src (RobWidget* w, void* handle) {
 static bool cb_mtx_gain (RobWidget* w, void* handle) {
 	RobTkApp* ui = (RobTkApp*)handle;
 	unsigned int n;
-	memcpy (&n, w->name, sizeof (unsigned int)); // hack alert
+	memcpy (&n, w->name, sizeof (unsigned int));
 	const float val = knob_to_db (robtk_dial_get_value (ui->mtx_gain[n]));
 	if (val == -128) {
 		ui->mtx_gain[n]->click_state = 1;
@@ -500,7 +525,7 @@ static bool cb_out_src (RobWidget* w, void* handle) {
 	RobTkApp* ui = (RobTkApp*)handle;
 	if (ui->disable_signals) return TRUE;
 	unsigned int n;
-	memcpy (&n, w->name, sizeof (unsigned int)); // hack alert
+	memcpy (&n, w->name, sizeof (unsigned int));
 	const float val = robtk_select_get_value (ui->out_sel[n]);
 	set_enum (out_sel (ui, n), val);
 	return TRUE;
@@ -510,7 +535,7 @@ static bool cb_out_gain (RobWidget* w, void* handle) {
 	RobTkApp* ui = (RobTkApp*)handle;
 	if (ui->disable_signals) return TRUE;
 	unsigned int n;
-	memcpy (&n, w->name, sizeof (unsigned int)); // hack alert
+	memcpy (&n, w->name, sizeof (unsigned int));
 	const bool mute = robtk_dial_get_state (ui->out_gain[n]) == 1;
 	const float val = robtk_dial_get_value (ui->out_gain[n]);
 	set_mute (out_gain (ui, n), mute);
@@ -684,7 +709,7 @@ static RobWidget* robtk_dial_mouse_intercept (RobWidget* handle, RobTkBtnEvent *
 	if (ev->button == 2) {
 		/* middle-click exclusively assign output */
 		unsigned int n;
-		memcpy (&n, d->rw->name, sizeof (unsigned int)); // hack alert
+		memcpy (&n, d->rw->name, sizeof (unsigned int));
 
 		unsigned c = n % SMO;
 		unsigned r = n / SMO;
@@ -747,7 +772,7 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 		robtk_select_set_callback (ui->src_sel[r], cb_src_sel, ui);
 
 		rob_table_attach (ui->matrix, robtk_select_widget (ui->src_sel[r]), 2, 3, r + 1, r + 2, 2, 2, RTK_SHRINK, RTK_SHRINK);
-		// hack alert -- should add a .data field to Robwidget
+		// hack alert, abusing the name filed -- should add a .data field to Robwidget
 		memcpy (ui->src_sel[r]->rw->name, &r, sizeof (unsigned int));
 	}
 
@@ -773,7 +798,6 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 		robtk_select_set_callback (ui->mtx_sel[r], cb_mtx_src, ui);
 
 		rob_table_attach (ui->matrix, robtk_select_widget (ui->mtx_sel[r]), c0, c0 + 1, r + 1, r + 2, 2, 2, RTK_SHRINK, RTK_SHRINK);
-		// hack alert -- should add a .data field to Robwidget
 		memcpy (ui->mtx_sel[r]->rw->name, &r, sizeof (unsigned int));
 
 		for (unsigned int c = 0; c < SMO; ++c) {
@@ -817,7 +841,6 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 
 			rob_table_attach (ui->matrix, robtk_dial_widget (ui->mtx_gain[n]), c0 + c + 1, c0 + c + 2, r + 1, r + 2, 0, 0, RTK_SHRINK, RTK_SHRINK);
 
-			// hack alert -- should add a .data field to Robwidget
 			memcpy (ui->mtx_gain[n]->rw->name, &n, sizeof (unsigned int));
 		}
 	}
@@ -877,7 +900,6 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 		robtk_dial_annotation_callback (ui->out_gain[o], dial_annotation_db, ui);
 		rob_table_attach (ui->output, robtk_dial_widget (ui->out_gain[o]), 3 * o + 2, 3 * o + 5, 1, 2, 2, 0, RTK_SHRINK, RTK_SHRINK);
 
-		// hack alert -- should add a .data field to Robwidget
 		memcpy (ui->out_gain[o]->rw->name, &o, sizeof (unsigned int));
 	}
 
@@ -899,14 +921,13 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 		robtk_select_set_default_item (ui->out_sel[o], out_sel_default (o));
 		robtk_select_set_callback (ui->out_sel[o], cb_out_src, ui);
 
-		// hack alert -- should add a .data field to Robwidget
 		memcpy (ui->out_sel[o]->rw->name, &o, sizeof (unsigned int));
-		int pc = 3 * (o / 2); // stereo-pair column
+		int pc = 3 * (o / 2); /* stereo-pair column */
 		if (o & 1) {
-			// right channel
+			/* right channel */
 			rob_table_attach (ui->output, robtk_select_widget (ui->out_sel[o]), 3 + pc, 5 + pc, 3, 4, 2, 2, RTK_SHRINK, RTK_SHRINK);
 		} else {
-			// left channel
+			/* left channel */
 			rob_table_attach (ui->output, robtk_select_widget (ui->out_sel[o]), 2 + pc, 4 + pc, 2, 3, 2, 2, RTK_SHRINK, RTK_SHRINK);
 		}
 
@@ -1014,6 +1035,8 @@ instantiate (
 		card = rtkargv->argv[1];
 	}
 
+	// TODO probe all devices find the first matching DEVICE_NAME
+
 	if (open_mixer (ui, card)) {
 		free (ui);
 		return 0;
@@ -1084,7 +1107,9 @@ port_event (LV2UI_Handle handle,
 	else if (revents & POLLIN) {
 		snd_mixer_handle_events (ui->mixer);
 	}
-	// do update
+
+	/* simply update the complete GUI (on any change) */
+
 	ui->disable_signals = true;
 	Mctrl* ctrl;
 
