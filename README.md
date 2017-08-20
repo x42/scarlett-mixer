@@ -1,7 +1,7 @@
 Graphical Mixer Interface for the Scarlett 18i6
 ===============================================
 
-This is a quick hack, you're on your own..
+This is a quick hack, it's prepared for other Scarlett devices, but you're on your own..
 
 
 Build-dependencies: gnu-make, a c-compiler, libpango, libcairo
@@ -18,3 +18,14 @@ and openGL (sometimes called: glu, glx, mesa).
 ```bash
   ./scarlett-mixer hw:2
 ```
+
+Screenshot
+----------
+
+![screenshot](https://raw.github.com/x42/scarlett-mixer/master/scarlett-mixer-gui.png "Scarlett 18i6 Mixer")
+
+
+See also
+--------
+
+ALSA Mixer in HTLM-5 with ALSA JSON Gateway: http://breizhme.net/alsajson/mixers/ajg#/
