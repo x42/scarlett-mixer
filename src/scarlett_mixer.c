@@ -36,6 +36,11 @@
  * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/sound/usb/mixer_scarlett.c#n635
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#else
+#define DEVICE_NAME "Scarlett 18i6 USB"
+
 /* scarlett matrix size */
 #define SMI 18 // matrix ins
 #define SMO 6  // matrix outs
@@ -43,9 +48,9 @@
 /* scarlett I/O config */
 #define SIN 18 // inputs (capture select)
 #define SOUT 6 // outputs assigns (=?= matrix outs)
-#define SMST 3 // output gain (stereo gain controls w/mute  =?= SOUT / 2)
+#endif
 
-#define DEVICE_NAME "Scarlett 18i6 USB"
+#define SMST 3 // output gain (stereo gain controls w/mute  =?= SOUT / 2)
 
 
 typedef struct {
