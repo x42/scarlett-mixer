@@ -18,18 +18,6 @@ deps = [
 name = 'Scarlett ' + get_option('num_inputs') + 'i' + get_option('num_outputs')
 apptitle = '-DAPPTITLE="' + name + ' Mixer"'
 
-conf = configuration_data()
-conf.set('SMI', get_option('num_inputs'))
-conf.set('SMO', get_option('num_outputs'))
-conf.set('SIN', get_option('num_inputs'))
-conf.set('SOUT', get_option('num_outputs'))
-conf.set_quoted('DEVICE_NAME', name + ' USB')
-
-configure_file(
-  output: 'config.h',
-  configuration: conf
-)
-
 executable('scarlett-mixer',
   sources: [
     'robtk/robtkapp.c',
@@ -41,7 +29,6 @@ executable('scarlett-mixer',
   c_args: [
     apptitle,
     '-xc++',  # temporary fix to make it compile with g++
-    '-DHAVE_CONFIG_H',
     '-DDEFAULT_NOT_ONTOP',
     '-DXTERNAL_UI',
     '-DHAVE_IDLE_IFACE',

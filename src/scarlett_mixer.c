@@ -36,21 +36,17 @@
  * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/sound/usb/mixer_scarlett.c#n635
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#else
-#define DEVICE_NAME "Scarlett 18i6 USB"
+#define DEVICE_NAME "Scarlett 18i8 USB"
 
 /* scarlett matrix size */
 #define SMI 18 // matrix ins
-#define SMO 6  // matrix outs
+#define SMO 8  // matrix outs
 
 /* scarlett I/O config */
 #define SIN 18 // inputs (capture select)
-#define SOUT 6 // outputs assigns (=?= matrix outs)
-#endif
+#define SOUT 8 // outputs assigns (=?= matrix outs)
 
-#define SMST 3 // output gain (stereo gain controls w/mute  =?= SOUT / 2)
+#define SMST 4  // output gain (stereo gain controls w/mute  =?= SOUT / 2) */
 
 
 typedef struct {
@@ -114,7 +110,7 @@ static Mctrl* matrix_ctrl_cr (RobTkApp* ui, unsigned int c, unsigned int r)
 	if (r >= SMI || c >= SMO) {
 		return NULL;
 	}
-	unsigned int ctrl_id = 33 + r * 7 + c;
+	unsigned int ctrl_id = 38 + r * 9 + c;
 	return &ui->ctrl[ctrl_id];
 }
 
@@ -136,7 +132,7 @@ static Mctrl* matrix_sel (RobTkApp* ui, unsigned int r)
 	 *  ..
 	 * Matrix 18 Input, ENUM
 	 */
-	unsigned int ctrl_id = 32 + r * 7;
+	unsigned int ctrl_id = 37 + r * 9;
 	return &ui->ctrl[ctrl_id];
 }
 
@@ -150,7 +146,7 @@ static Mctrl* src_sel (RobTkApp* ui, unsigned int r)
 	 *  ..
 	 * Input Source 18, ENUM
 	 */
-	unsigned int ctrl_id = 13 + r;
+	unsigned int ctrl_id = 19 + r;
 	return &ui->ctrl[ctrl_id];
 }
 
@@ -163,11 +159,13 @@ static int src_sel_default (unsigned int r, int max_values)
 /* Output Gains */
 static Mctrl* out_gain (RobTkApp* ui, unsigned int c)
 {
-	switch (c) {
-		case 0: return &ui->ctrl[1]; /* Master 1 (Monitor), PBS */
-		case 1: return &ui->ctrl[4]; /* Master 2 (Headphone), PBS */
-		case 2: return &ui->ctrl[7]; /* Master 3 (SPDIF), PBS */
-	}
+    switch (c) {
+        case 0: return &ui->ctrl[1];  /* Master 1 (Monitor), PBS */
+        case 1: return &ui->ctrl[4];  /* Master 2 (Headphone), PBS */
+        case 2: return &ui->ctrl[7];  /* Master 3 (Headphone), PBS */
+        case 3: return &ui->ctrl[10]; /* Master 4 (Headphone), PBS */
+    }
+
 	return NULL;
 }
 
@@ -177,8 +175,10 @@ static const char* out_gain_label (int n)
 		case 0:
 			return "Monitor";
 		case 1:
-			return "Phones";
+			return "Phones 1";
 		case 2:
+			return "Phones 2";
+		case 3:
 			return "ADAT";
 		default:
 			return "??";
@@ -188,14 +188,16 @@ static const char* out_gain_label (int n)
 /* Output Bus assignment (matrix-out to master) */
 static Mctrl* out_sel (RobTkApp* ui, unsigned int c)
 {
-	switch (c) {
-		case 0: return &ui->ctrl[2]; /* Master 1L (Monitor) Source, ENUM */
-		case 1: return &ui->ctrl[3]; /* Master 1R (Monitor) Source, ENUM */
-		case 2: return &ui->ctrl[5]; /* Master 2L (Headphone) Source, ENUM */
-		case 3: return &ui->ctrl[6]; /* Master 2R (Headphone) Source, ENUM */
-		case 4: return &ui->ctrl[8]; /* Master 3L (SPDIF) Source, ENUM */
-		case 5: return &ui->ctrl[9]; /* Master 3R (SPDIF) Source, ENUM */
-	}
+    switch (c) {
+        case 0: return &ui->ctrl[2]; /* Master 1L (Monitor) Source, ENUM */
+        case 1: return &ui->ctrl[3]; /* Master 1R (Monitor) Source, ENUM */
+        case 2: return &ui->ctrl[5]; /* Master 2L (Headphone) Source, ENUM */
+        case 3: return &ui->ctrl[6]; /* Master 2R (Headphone) Source, ENUM */
+        case 4: return &ui->ctrl[8]; /* Master 3L (Headphone) Source, ENUM */
+        case 5: return &ui->ctrl[9]; /* Master 3R (Headphone) Source, ENUM */
+        case 6: return &ui->ctrl[11]; /* Master 4L (SPDIF) Source, ENUM */
+        case 7: return &ui->ctrl[12]; /* Master 4R (SPDIF) Source, ENUM */
+    }
 	return NULL;
 }
 
@@ -208,10 +210,10 @@ static int out_sel_default (unsigned int c)
 /* Hi-Z switches */
 static Mctrl* hiz (RobTkApp* ui, unsigned int c)
 {
-	switch (c) {
-		case 0: return &ui->ctrl[11]; /* Input 1 Impedance, ENUM */
-		case 1: return &ui->ctrl[12]; /* Input 2 Impedance, ENUM */
-	}
+    switch (c) {
+        case 0: return &ui->ctrl[13]; /* Input 1 Impedance, ENUM */
+        case 1: return &ui->ctrl[15]; /* Input 2 Impedance, ENUM */
+    }
 	return NULL;
 }
 

@@ -1,2 +1,0 @@
-option('num_inputs', type: 'string', value: '18', description: 'Number of inputs')
-option('num_outputs', type: 'string', value: '6', description: 'Number of outputs')
