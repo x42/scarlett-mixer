@@ -76,6 +76,7 @@ typedef struct {
 
 	RobTkDial*   mst_gain;
 	RobTkCBtn*   btn_hiz[2];
+	RobTkCBtn*   btn_pad[4];
 	RobTkPBtn*   btn_reset;
 
 	RobTkLbl*    heading[3];
@@ -215,6 +216,18 @@ static Mctrl* hiz (RobTkApp* ui, unsigned int c)
         case 1: return &ui->ctrl[15]; /* Input 2 Impedance, ENUM */
     }
 	return NULL;
+}
+
+/* Pad switches */
+static Mctrl* pad (RobTkApp *ui, unsigned c)
+{
+    switch (c) {
+        case 0: return &ui->ctrl[14];
+        case 1: return &ui->ctrl[16];
+        case 2: return &ui->ctrl[17];
+        case 3: return &ui->ctrl[18];
+    }
+    return NULL;
 }
 
 /* master gain */
@@ -491,6 +504,16 @@ static bool cb_set_hiz (RobWidget* w, void* handle) {
 	return TRUE;
 }
 
+static bool cb_set_pad (RobWidget* w, void* handle) {
+	RobTkApp* ui = (RobTkApp*)handle;
+	if (ui->disable_signals) return TRUE;
+	for (uint32_t i = 0; i < 4; ++i) {
+		int val = robtk_cbtn_get_active (ui->btn_pad[i]) ? 1 : 0;
+		set_enum (pad (ui, i), val);
+	}
+	return TRUE;
+}
+
 static bool cb_src_sel (RobWidget* w, void* handle) {
 	RobTkApp* ui = (RobTkApp*)handle;
 	if (ui->disable_signals) return TRUE;
@@ -753,7 +776,7 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 
 	/* table layout. NB: these are min sizes, table grows if needed */
 	ui->matrix = rob_table_new (/*rows*/rb, /*cols*/ 5 + SMO, FALSE);
-	ui->output = rob_table_new (/*rows*/3,  /*cols*/ 2 + 3 * SMST, FALSE);
+	ui->output = rob_table_new (/*rows*/4,  /*cols*/ 2 + 3 * SMST, FALSE);
 
 	/* headings */
 	ui->heading[0]  = robtk_lbl_new ("Capture");
@@ -919,6 +942,15 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 		rob_table_attach (ui->output, robtk_cbtn_widget (ui->btn_hiz[i]),
 				i, i + 1, 3, 4, 0, 0, RTK_SHRINK, RTK_SHRINK);
 	}
+
+    /* Pads */
+    for (unsigned int i = 0; i < 4; ++i) {
+        ui->btn_pad[i] = robtk_cbtn_new ("Pad", GBT_LED_LEFT, false);
+		robtk_cbtn_set_active (ui->btn_pad[i], get_enum (pad (ui, i)) == 1);
+		robtk_cbtn_set_callback (ui->btn_pad[i], cb_set_pad, ui);
+        rob_table_attach (ui->output, robtk_cbtn_widget (ui->btn_pad[i]),
+                i, i + 1, 4, 5, 0, 0, RTK_SHRINK, RTK_SHRINK);
+    }
 
 	/* output selectors */
 	for (unsigned int o = 0; o < SOUT; ++o) {
