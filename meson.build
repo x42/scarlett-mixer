@@ -28,7 +28,6 @@ executable('scarlett-mixer',
   include_directories: include_directories('robtk'),
   c_args: [
     apptitle,
-    '-xc++',  # temporary fix to make it compile with g++
     '-DDEFAULT_NOT_ONTOP',
     '-DXTERNAL_UI',
     '-DHAVE_IDLE_IFACE',

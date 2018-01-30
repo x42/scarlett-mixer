@@ -36,18 +36,74 @@
  * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/sound/usb/mixer_scarlett.c#n635
  */
 
-#define DEVICE_NAME "Scarlett 18i8 USB"
+#define MAX_GAINS   4
+#define MAX_BUSSES  8
+#define MAX_HIZS    2
+#define MAX_PADS    4
 
-/* scarlett matrix size */
-#define SMI 18 // matrix ins
-#define SMO 8  // matrix outs
+typedef struct {
+    const char  name[64];
+    unsigned    smi;
+    unsigned    smo;
+    unsigned    sin;
+    unsigned    sout;
+    unsigned    smst;
+    unsigned    num_monitor;
+    unsigned    num_phones;
+    unsigned    num_hiz;
+    unsigned    num_pad;
+    unsigned    matrix_mix_offset;
+    unsigned    matrix_mix_stride;
+    unsigned    matrix_in_offset;
+    unsigned    matrix_in_stride;
+    unsigned    input_offset;
+    int         out_gain_map[MAX_GAINS];
+    const char  out_gain_labels[MAX_GAINS][16];
+    int         out_bus_map[MAX_BUSSES];
+    int         hiz_map[MAX_HIZS];
+    int         pad_map[MAX_PADS];
+} Device;
 
-/* scarlett I/O config */
-#define SIN 18 // inputs (capture select)
-#define SOUT 8 // outputs assigns (=?= matrix outs)
+static Device devices[] = {
+    {
+        .name = "Scarlett 18i6 USB",
+        .smi = 18, .smo = 6,
+        .sin = 18, .sout = 6,
+        .smst = 3,
+        .num_monitor = 1,
+        .num_phones = 1,
+        .num_hiz = 2,
+        .num_pad = 0,
+        .matrix_mix_offset = 33, .matrix_mix_stride = 7,
+        .matrix_in_offset = 32, .matrix_in_stride = 7,
+        .input_offset = 13,
+        .out_gain_map = { 1 /* Monitor */, 4 /* Headphone */, 7 /* SPDIF */, -1 },
+        .out_gain_labels = { "Monitor", "Headphone", "ADAT", "" },
+        .out_bus_map = { 2, 3, 5, 6, 8, 9, -1, -1 },
+        .hiz_map = { 11, 12 },
+        .pad_map = { -1, -1, -1, -1 },
+    },
+    {
+        .name = "Scarlett 18i8 USB",
+        .smi = 18, .smo = 8,
+        .sin = 18, .sout = 8,
+        .smst = 4,
+        .num_monitor = 1,
+        .num_phones = 2,
+        .num_hiz = 2,
+        .num_pad = 4,
+        .matrix_mix_offset = 38, .matrix_mix_stride = 9,
+        .matrix_in_offset = 37, .matrix_in_stride = 9,
+        .input_offset = 19,
+        .out_gain_map = { 1 /* Monitor */, 4 /* Headphone 1 */, 7 /* Headphone 2 */, 10 /* SPDIF */ },
+        .out_gain_labels = { "Monitor", "Headphone 1", "Headphone 2", "ADAT" },
+        .out_bus_map = { 2, 3, 5, 6, 8, 9, 11, 12 },
+        .hiz_map = { 13, 15 },
+        .pad_map = { 14, 16, 17, 18 },
+    },
+};
 
-#define SMST 4  // output gain (stereo gain controls w/mute  =?= SOUT / 2) */
-
+#define NUM_DEVICES     (sizeof (devices) / sizeof (devices[0]))
 
 typedef struct {
 	snd_mixer_elem_t* elem;
@@ -55,35 +111,36 @@ typedef struct {
 } Mctrl;
 
 typedef struct {
-	RobWidget*   rw;
-	RobWidget*   matrix;
-	RobWidget*   output;
-	RobTkSelect* mtx_sel[SMI];
-	RobTkDial*   mtx_gain[SMI * SMO];
-	RobTkLbl*    mtx_lbl[SMO];
+	RobWidget*      rw;
+	RobWidget*      matrix;
+	RobWidget*      output;
+	RobTkSelect**   mtx_sel;
+	RobTkDial**     mtx_gain;
+	RobTkLbl**      mtx_lbl;
 
-	RobTkSep*    sep_h;
-	RobTkSep*    sep_v;
-	RobTkSep*    spc_v[2];
+	RobTkSep*       sep_h;
+	RobTkSep*       sep_v;
+	RobTkSep*       spc_v[2];
 
-	RobTkLbl*    src_lbl[SIN];
-	RobTkSelect* src_sel[SIN];
+	RobTkLbl**      src_lbl;
+	RobTkSelect**   src_sel;
 
-	RobTkSelect* out_sel[SOUT];
-	RobTkLbl*    out_mst;
-	RobTkLbl*    out_lbl[SMST];
-	RobTkDial*   out_gain[SMST];
+	RobTkSelect**   out_sel;
+	RobTkLbl*       out_mst;
+	RobTkLbl**      out_lbl;
+	RobTkDial**     out_gain;
 
-	RobTkDial*   mst_gain;
-	RobTkCBtn*   btn_hiz[2];
-	RobTkCBtn*   btn_pad[4];
-	RobTkPBtn*   btn_reset;
+	RobTkDial*      mst_gain;
+	RobTkCBtn**     btn_hiz;
+	RobTkCBtn**     btn_pad;
+	RobTkPBtn*      btn_reset;
 
-	RobTkLbl*    heading[3];
+	RobTkLbl*       heading[3];
 
 	PangoFontDescription* font;
 	cairo_surface_t*      mtx_sf[6];
 
+    Device*      device;
 	Mctrl*       ctrl;
 	unsigned int ctrl_cnt;
 	snd_mixer_t* mixer;
@@ -95,7 +152,7 @@ typedef struct {
 
 
 /* *****************************************************************************
- * Mapping for the 18i6
+ * Mapping for the 18i6 and 18i8
  *
  * NOTE: these are numerically hardcoded. see `amixer -D hw:2 control`
  * and #if'd "Print Controls" debug dump below
@@ -108,126 +165,92 @@ static Mctrl* matrix_ctrl_cr (RobTkApp* ui, unsigned int c, unsigned int r)
 	 *  ..
 	 * Matrix 18 Mix F
 	 */
-	if (r >= SMI || c >= SMO) {
+	if (r >= ui->device->smi || c >= ui->device->smo) {
 		return NULL;
 	}
-	unsigned int ctrl_id = 38 + r * 9 + c;
+	unsigned int ctrl_id = ui->device->matrix_mix_offset + r * ui->device->matrix_mix_stride + c;
 	return &ui->ctrl[ctrl_id];
 }
 
 /* wrapper to the above, linear lookup */
 static Mctrl* matrix_ctrl_n (RobTkApp* ui, unsigned int n)
 {
-	unsigned c = n % SMO;
-	unsigned r = n / SMO;
+	unsigned c = n % ui->device->smo;
+	unsigned r = n / ui->device->smo;
 	return matrix_ctrl_cr (ui, c, r);
 }
 
 /* matrix input selector (per row)*/
 static Mctrl* matrix_sel (RobTkApp* ui, unsigned int r)
 {
-	if (r >= SMI) {
+	if (r >= ui->device->smi) {
 		return NULL;
 	}
 	/* Matrix 01 Input, ENUM
 	 *  ..
 	 * Matrix 18 Input, ENUM
 	 */
-	unsigned int ctrl_id = 37 + r * 9;
+	unsigned int ctrl_id = ui->device->matrix_in_offset + r * ui->device->matrix_in_stride;
 	return &ui->ctrl[ctrl_id];
 }
 
 /* Input/Capture selector */
 static Mctrl* src_sel (RobTkApp* ui, unsigned int r)
 {
-	if (r >= SIN) {
+	if (r >= ui->device->sin) {
 		return NULL;
 	}
 	/* Input Source 01, ENUM
 	 *  ..
 	 * Input Source 18, ENUM
 	 */
-	unsigned int ctrl_id = 19 + r;
+	unsigned int ctrl_id = ui->device->input_offset + r;
 	return &ui->ctrl[ctrl_id];
 }
 
 static int src_sel_default (unsigned int r, int max_values)
 {
-	/* 0 <= r < SIN;  return 0 .. max_values - 1 */
+	/* 0 <= r < ui->device->sin;  return 0 .. max_values - 1 */
 	return (r + 7) % max_values; // XXX hardcoded defaults. offset 7: "Analog 1"
 }
 
 /* Output Gains */
 static Mctrl* out_gain (RobTkApp* ui, unsigned int c)
 {
-    switch (c) {
-        case 0: return &ui->ctrl[1];  /* Master 1 (Monitor), PBS */
-        case 1: return &ui->ctrl[4];  /* Master 2 (Headphone), PBS */
-        case 2: return &ui->ctrl[7];  /* Master 3 (Headphone), PBS */
-        case 3: return &ui->ctrl[10]; /* Master 4 (Headphone), PBS */
-    }
-
-	return NULL;
+    assert (c < MAX_GAINS);
+    return &ui->ctrl[ui->device->out_gain_map[c]];
 }
 
-static const char* out_gain_label (int n)
+static const char* out_gain_label (RobTkApp *ui, int n)
 {
-	switch (n) {
-		case 0:
-			return "Monitor";
-		case 1:
-			return "Phones 1";
-		case 2:
-			return "Phones 2";
-		case 3:
-			return "ADAT";
-		default:
-			return "??";
-	}
+    return ui->device->out_gain_labels[n];
 }
 
 /* Output Bus assignment (matrix-out to master) */
 static Mctrl* out_sel (RobTkApp* ui, unsigned int c)
 {
-    switch (c) {
-        case 0: return &ui->ctrl[2]; /* Master 1L (Monitor) Source, ENUM */
-        case 1: return &ui->ctrl[3]; /* Master 1R (Monitor) Source, ENUM */
-        case 2: return &ui->ctrl[5]; /* Master 2L (Headphone) Source, ENUM */
-        case 3: return &ui->ctrl[6]; /* Master 2R (Headphone) Source, ENUM */
-        case 4: return &ui->ctrl[8]; /* Master 3L (Headphone) Source, ENUM */
-        case 5: return &ui->ctrl[9]; /* Master 3R (Headphone) Source, ENUM */
-        case 6: return &ui->ctrl[11]; /* Master 4L (SPDIF) Source, ENUM */
-        case 7: return &ui->ctrl[12]; /* Master 4R (SPDIF) Source, ENUM */
-    }
-	return NULL;
+    assert (c < MAX_BUSSES);
+    return &ui->ctrl[ui->device->out_bus_map[c]];
 }
 
 static int out_sel_default (unsigned int c)
 {
-	/* 0 <= c < SOUT; */
+	/* 0 <= c < ui->device->sout; */
 	return 25 + c; // XXX hardcoded defaults. offset 25: "Mix 1"
 }
 
 /* Hi-Z switches */
 static Mctrl* hiz (RobTkApp* ui, unsigned int c)
 {
-    switch (c) {
-        case 0: return &ui->ctrl[13]; /* Input 1 Impedance, ENUM */
-        case 1: return &ui->ctrl[15]; /* Input 2 Impedance, ENUM */
-    }
-	return NULL;
+    assert (c < ui->device->num_hiz);
+    return &ui->ctrl[ui->device->hiz_map[c]];
 }
 
 /* Pad switches */
 static Mctrl* pad (RobTkApp *ui, unsigned c)
 {
-    switch (c) {
-        case 0: return &ui->ctrl[14];
-        case 1: return &ui->ctrl[16];
-        case 2: return &ui->ctrl[17];
-        case 3: return &ui->ctrl[18];
-    }
-    return NULL;
+    assert (c < ui->device->num_pad);
+    return &ui->ctrl[ui->device->pad_map[c]];
 }
 
 /* master gain */
@@ -273,8 +296,20 @@ static int open_mixer (RobTkApp* ui, const char* card)
 	const char* card_name = snd_ctl_card_info_get_name (card_info);
 	snd_ctl_close (hctl);
 
-	if (!card_name || strcmp (card_name, DEVICE_NAME)) {
-		fprintf (stderr, "Device '%s' is a '%s' - expected '%s'\n", card, card_name ? card_name : "unknown", DEVICE_NAME);
+    if (!card_name) {
+        fprintf (stderr, "Device `%s' is unknown\n", card);
+        return -1;
+    }
+
+    ui->device = NULL;
+
+    for (unsigned i = 0; i < NUM_DEVICES; i++) {
+        if (!strcmp (card_name, devices[i].name))
+            ui->device = &devices[i];
+    }
+
+    if (ui->device == NULL) {
+		fprintf (stderr, "Device `%s' is not supported\n", card);
 		return -1;
 	}
 
@@ -443,21 +478,21 @@ static bool cb_btn_reset (RobWidget* w, void* handle) {
 	RobTkApp* ui = (RobTkApp*)handle;
 	/* toggle all values (force change) */
 
-	for (int r = 0; r < SIN; ++r) {
+	for (int r = 0; r < ui->device->sin; ++r) {
 		Mctrl* sctrl = src_sel (ui, r);
 		int mcnt = snd_mixer_selem_get_enum_items (sctrl->elem);
 		const int val = robtk_select_get_value (ui->src_sel[r]);
 		set_enum (sctrl, (val + 1) % mcnt);
 		set_enum (sctrl, val);
 	}
-	for (int r = 0; r < SMI; ++r) {
+	for (int r = 0; r < ui->device->smi; ++r) {
 		Mctrl* sctrl = matrix_sel (ui, r);
 		int mcnt = snd_mixer_selem_get_enum_items (sctrl->elem);
 		const int val = robtk_select_get_value (ui->mtx_sel[r]);
 		set_enum (sctrl, (val + 1) % mcnt);
 		set_enum (sctrl, val);
 	}
-	for (unsigned int o = 0; o < SOUT; ++o) {
+	for (unsigned int o = 0; o < ui->device->sout; ++o) {
 		Mctrl* sctrl = out_sel (ui, o);
 		int mcnt = snd_mixer_selem_get_enum_items (sctrl->elem);
 		const int val = robtk_select_get_value (ui->out_sel[o]);
@@ -465,9 +500,9 @@ static bool cb_btn_reset (RobWidget* w, void* handle) {
 		set_enum (sctrl, val);
 	}
 
-	for (int r = 0; r < SMI; ++r) {
-		for (unsigned int c = 0; c < SMO; ++c) {
-			unsigned int n = r * SMO + c;
+	for (int r = 0; r < ui->device->smi; ++r) {
+		for (unsigned int c = 0; c < ui->device->smo; ++c) {
+			unsigned int n = r * ui->device->smo + c;
 			Mctrl* ctrl = matrix_ctrl_cr (ui, c, r);
 			const float val = knob_to_db (robtk_dial_get_value (ui->mtx_gain[n]));
 			if (val == -128) {
@@ -478,7 +513,7 @@ static bool cb_btn_reset (RobWidget* w, void* handle) {
 			set_dB (ctrl, val);
 		}
 	}
-	for (unsigned int n = 0; n < SMST; ++n) {
+	for (unsigned int n = 0; n < ui->device->smst; ++n) {
 		Mctrl* ctrl = out_gain (ui, n);
 		const bool mute = robtk_dial_get_state (ui->out_gain[n]) == 1;
 		const float val = knob_to_db (robtk_dial_get_value (ui->out_gain[n]));
@@ -741,10 +776,10 @@ static RobWidget* robtk_dial_mouse_intercept (RobWidget* handle, RobTkBtnEvent *
 		unsigned int n;
 		memcpy (&n, d->rw->name, sizeof (unsigned int));
 
-		unsigned c = n % SMO;
-		unsigned r = n / SMO;
-		for (uint32_t i = 0; i < SMO; ++i) {
-			unsigned int nn = r * SMO + i;
+		unsigned c = n % ui->device->smo;
+		unsigned r = n / ui->device->smo;
+		for (uint32_t i = 0; i < ui->device->smo; ++i) {
+			unsigned int nn = r * ui->device->smo + i;
 			if (i == c) {
 				if (d->cur == 0) {
 					robtk_dial_set_value (ui->mtx_gain[nn], db_to_knob (0));
@@ -771,12 +806,27 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	create_faceplate (ui);
 	ui->font = pango_font_description_from_string ("Mono 9px");
 
+    /* device dependent construction */
+    ui->mtx_sel = malloc (ui->device->sin * sizeof (RobTkSelect *));
+	ui->mtx_gain = malloc (ui->device->smi * ui->device->smo * sizeof (RobTkDial *));
+    ui->mtx_lbl = malloc (ui->device->smo * sizeof (RobTkLbl *));
+
+    ui->src_lbl = malloc (ui->device->sin * sizeof (RobTkLbl *));
+    ui->src_sel = malloc (ui->device->sin * sizeof (RobTkSelect *));
+
+    ui->out_lbl = malloc (ui->device->smst * sizeof (RobTkLbl *));
+    ui->out_sel = malloc (ui->device->sout * sizeof (RobTkSelect *));
+    ui->out_gain = malloc (ui->device->smst * sizeof (RobTkDial *));
+
+    ui->btn_hiz = malloc (ui->device->num_hiz * sizeof (RobTkCBtn *));
+    ui->btn_pad = malloc (ui->device->num_pad * sizeof (RobTkCBtn *));
+
 	const int c0 = 4; // matrix column offset
-	const int rb = 2 + SMI; // matrix bottom
+	const int rb = 2 + ui->device->smi; // matrix bottom
 
 	/* table layout. NB: these are min sizes, table grows if needed */
-	ui->matrix = rob_table_new (/*rows*/rb, /*cols*/ 5 + SMO, FALSE);
-	ui->output = rob_table_new (/*rows*/4,  /*cols*/ 2 + 3 * SMST, FALSE);
+	ui->matrix = rob_table_new (/*rows*/rb, /*cols*/ 5 + ui->device->smo, FALSE);
+	ui->output = rob_table_new (/*rows*/4,  /*cols*/ 2 + 3 * ui->device->smst, FALSE);
 
 	/* headings */
 	ui->heading[0]  = robtk_lbl_new ("Capture");
@@ -784,11 +834,10 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	ui->heading[1]  = robtk_lbl_new ("Source");
 	rob_table_attach (ui->matrix, robtk_lbl_widget (ui->heading[1]), c0, c0 + 1, 0, 1, 2, 6, RTK_SHRINK, RTK_SHRINK);
 	ui->heading[2]  = robtk_lbl_new ("Matrix Mixer");
-	rob_table_attach (ui->matrix, robtk_lbl_widget (ui->heading[2]), c0 + 1, c0 + 1 + SMO, 0, 1, 2, 6, RTK_SHRINK, RTK_SHRINK);
+	rob_table_attach (ui->matrix, robtk_lbl_widget (ui->heading[2]), c0 + 1, c0 + 1 + ui->device->smo, 0, 1, 2, 6, RTK_SHRINK, RTK_SHRINK);
 
 	/* input selectors */
-	unsigned int r;
-	for (r = 0; r < SIN; ++r) {
+	for (unsigned r = 0; r < ui->device->sin; ++r) {
 		char txt[8];
 		sprintf (txt, "%d", r + 1);
 		ui->src_lbl[r] = robtk_lbl_new (txt);
@@ -812,14 +861,16 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	rob_table_attach (ui->matrix, robtk_sep_widget (ui->spc_v[0]), 0, 1, 0, rb, 0, 0, RTK_EXANDF, RTK_FILL);
 	ui->spc_v[1] = robtk_sep_new (FALSE);
 	robtk_sep_set_linewidth (ui->spc_v[1], 0);
-	rob_table_attach (ui->matrix, robtk_sep_widget (ui->spc_v[1]), c0 + 1 + SMO, c0 + 2 + SMO, 0, rb, 0, 0, RTK_EXANDF, RTK_FILL);
+	rob_table_attach (ui->matrix, robtk_sep_widget (ui->spc_v[1]), c0 + 1 + ui->device->smo, c0 + 2 + ui->device->smo, 0, rb, 0, 0, RTK_EXANDF, RTK_FILL);
 
 	/* vertical separator line between inputs and matrix (c0-1 .. c0)*/
 	ui->sep_v = robtk_sep_new (FALSE);
 	rob_table_attach (ui->matrix, robtk_sep_widget (ui->sep_v), 3, 4, 0, rb, 10, 0, RTK_SHRINK, RTK_FILL);
 
 	/* matrix */
-	for (r = 0; r < SMI; ++r) {
+    unsigned int r;
+
+	for (r = 0; r < ui->device->smi; ++r) {
 		ui->mtx_sel[r] = robtk_select_new ();
 
 		Mctrl* sctrl = matrix_sel (ui, r);
@@ -830,8 +881,8 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 		rob_table_attach (ui->matrix, robtk_select_widget (ui->mtx_sel[r]), c0, c0 + 1, r + 1, r + 2, 2, 2, RTK_SHRINK, RTK_SHRINK);
 		memcpy (ui->mtx_sel[r]->rw->name, &r, sizeof (unsigned int));
 
-		for (unsigned int c = 0; c < SMO; ++c) {
-			unsigned int n = r * SMO + c;
+		for (unsigned int c = 0; c < ui->device->smo; ++c) {
+			unsigned int n = r * ui->device->smo + c;
 			Mctrl* ctrl = matrix_ctrl_cr (ui, c, r);
 			assert (ctrl);
 			ui->mtx_gain[n] = robtk_dial_new_with_size (
@@ -843,6 +894,7 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 			robtk_dial_annotation_callback (ui->mtx_gain[n], dial_annotation_db, ui);
 			robwidget_set_mousedown (ui->mtx_gain[n]->rw, robtk_dial_mouse_intercept);
 			ui->mtx_gain[n]->displaymode = 3;
+
 			if (0 == robtk_dial_get_value (ui->mtx_gain[n])) {
 				ui->mtx_gain[n]->click_state = 1;
 			}
@@ -850,13 +902,13 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 				ui->mtx_gain[n]->click_state = 2;
 			}
 
-			if (c == (SMO - 1) && r == 0) {
+			if (c == (ui->device->smo - 1) && r == 0) {
 				robtk_dial_set_surface (ui->mtx_gain[n], ui->mtx_sf[5]);
 			}
 			else if (c == 0 && r == 0) {
 				robtk_dial_set_surface (ui->mtx_gain[n], ui->mtx_sf[4]);
 			}
-			else if (c == (SMO - 1)) {
+			else if (c == (ui->device->smo - 1)) {
 				robtk_dial_set_surface (ui->mtx_gain[n], ui->mtx_sf[3]);
 			}
 			else if (c == 0) {
@@ -876,13 +928,12 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	}
 
 	/* matrix out labels */
-	for (unsigned int c = 0; c < SMO; ++c) {
+	for (unsigned int c = 0; c < ui->device->smo; ++c) {
 		char txt[8];
 		sprintf (txt, "Mix %c", 'A' + c);
 		ui->mtx_lbl[c]  = robtk_lbl_new (txt);
 		rob_table_attach (ui->matrix, robtk_lbl_widget (ui->mtx_lbl[c]), c0 + c + 1, c0 + c + 2, r + 1, r + 2, 2, 2, RTK_SHRINK, RTK_SHRINK);
 	}
-
 
 	/*** output Table ***/
 
@@ -909,8 +960,8 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	}
 
 	/* output level + labels */
-	for (unsigned int o = 0; o < SMST; ++o) {
-		ui->out_lbl[o]  = robtk_lbl_new (out_gain_label (o));
+	for (unsigned int o = 0; o < ui->device->smst; ++o) {
+		ui->out_lbl[o]  = robtk_lbl_new (out_gain_label (ui, o));
 		rob_table_attach (ui->output, robtk_lbl_widget (ui->out_lbl[o]), 3 * o + 2, 3 * o + 5, 0, 1, 2, 2, RTK_SHRINK, RTK_SHRINK);
 
 		Mctrl* ctrl = out_gain (ui, o);
@@ -933,9 +984,8 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 		memcpy (ui->out_gain[o]->rw->name, &o, sizeof (unsigned int));
 	}
 
-
 	/* Hi-Z*/
-	for (unsigned int i = 0; i < 2; ++i) {
+	for (unsigned int i = 0; i < ui->device->num_hiz; ++i) {
 		ui->btn_hiz[i] = robtk_cbtn_new ("HiZ", GBT_LED_LEFT, false);
 		robtk_cbtn_set_active (ui->btn_hiz[i], get_enum (hiz (ui, i)) == 1);
 		robtk_cbtn_set_callback (ui->btn_hiz[i], cb_set_hiz, ui);
@@ -944,7 +994,7 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	}
 
     /* Pads */
-    for (unsigned int i = 0; i < 4; ++i) {
+    for (unsigned int i = 0; i < ui->device->num_pad; ++i) {
         ui->btn_pad[i] = robtk_cbtn_new ("Pad", GBT_LED_LEFT, false);
 		robtk_cbtn_set_active (ui->btn_pad[i], get_enum (pad (ui, i)) == 1);
 		robtk_cbtn_set_callback (ui->btn_pad[i], cb_set_pad, ui);
@@ -953,7 +1003,7 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
     }
 
 	/* output selectors */
-	for (unsigned int o = 0; o < SOUT; ++o) {
+	for (unsigned int o = 0; o < ui->device->sout; ++o) {
 		ui->out_sel[o] = robtk_select_new ();
 		Mctrl* sctrl = out_sel (ui, o);
 		set_select_values (ui->out_sel[o], sctrl);
@@ -969,13 +1019,12 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 			/* left channel */
 			rob_table_attach (ui->output, robtk_select_widget (ui->out_sel[o]), 2 + pc, 4 + pc, 2, 3, 2, 2, RTK_SHRINK, RTK_SHRINK);
 		}
-
 	}
 
 #if 1
 	/* re-send */
 	ui->btn_reset = robtk_pbtn_new ("R");
-	rob_table_attach (ui->output, robtk_pbtn_widget (ui->btn_reset), 1 + 3 * (SOUT / 2), 2 + 3 * (SOUT / 2), 2, 3, 2, 2, RTK_SHRINK, RTK_SHRINK);
+	rob_table_attach (ui->output, robtk_pbtn_widget (ui->btn_reset), 1 + 3 * (ui->device->sout / 2), 2 + 3 * (ui->device->sout / 2), 2, 3, 2, 2, RTK_SHRINK, RTK_SHRINK);
 	robtk_pbtn_set_callback_up (ui->btn_reset, cb_btn_reset, ui);
 #endif
 
@@ -993,23 +1042,23 @@ static void gui_cleanup (RobTkApp* ui) {
 	close_mixer (ui);
 	free (ui->pollfds);
 
-	for (int i = 0; i < SIN; ++i) {
+	for (int i = 0; i < ui->device->sin; ++i) {
 		robtk_select_destroy (ui->src_sel[i]);
 		robtk_lbl_destroy (ui->src_lbl[i]);
 	}
-	for (int r = 0; r < SMI; ++r) {
+	for (int r = 0; r < ui->device->smi; ++r) {
 		robtk_select_destroy (ui->mtx_sel[r]);
-		for (int c = 0; c < SMO; ++c) {
-			robtk_dial_destroy (ui->mtx_gain[r * SMO + c]);
+		for (int c = 0; c < ui->device->smo; ++c) {
+			robtk_dial_destroy (ui->mtx_gain[r * ui->device->smo + c]);
 		}
 	}
-	for (int i = 0; i < SMO; ++i) {
+	for (int i = 0; i < ui->device->smo; ++i) {
 		robtk_lbl_destroy (ui->mtx_lbl[i]);
 	}
-	for (int i = 0; i < SOUT; ++i) {
+	for (int i = 0; i < ui->device->sout; ++i) {
 		robtk_select_destroy (ui->out_sel[i]);
 	}
-	for (int i = 0; i < SMST; ++i) {
+	for (int i = 0; i < ui->device->smst; ++i) {
 		robtk_lbl_destroy (ui->out_lbl[i]);
 		robtk_dial_destroy (ui->out_gain[i]);
 	}
@@ -1023,8 +1072,12 @@ static void gui_cleanup (RobTkApp* ui) {
 
 	robtk_lbl_destroy (ui->out_mst);
 	robtk_dial_destroy (ui->mst_gain);
-	robtk_cbtn_destroy (ui->btn_hiz[0]);
-	robtk_cbtn_destroy (ui->btn_hiz[1]);
+
+    for (int i = 0; i < ui->device->num_hiz; i++)
+        robtk_cbtn_destroy (ui->btn_hiz[i]);
+
+    for (int i = 0; i < ui->device->num_pad; i++)
+        robtk_cbtn_destroy (ui->btn_pad[i]);
 
 	robtk_sep_destroy (ui->sep_v);
 	robtk_sep_destroy (ui->sep_h);
@@ -1036,6 +1089,20 @@ static void gui_cleanup (RobTkApp* ui) {
 	rob_box_destroy (ui->rw);
 
 	pango_font_description_free (ui->font);
+
+    free (ui->mtx_sel);
+	free (ui->mtx_gain);
+    free (ui->mtx_lbl);
+
+    free (ui->src_lbl);
+    free (ui->src_sel);
+
+    free (ui->out_lbl);
+    free (ui->out_sel);
+    free (ui->out_gain);
+
+    free (ui->btn_hiz);
+    free (ui->btn_pad);
 }
 
 /* *****************************************************************************
@@ -1152,23 +1219,23 @@ port_event (LV2UI_Handle handle,
 	ui->disable_signals = true;
 	Mctrl* ctrl;
 
-	for (unsigned int r = 0; r < SIN; ++r) {
+	for (unsigned int r = 0; r < ui->device->sin; ++r) {
 		ctrl = src_sel (ui, r);
 		robtk_select_set_value (ui->src_sel[r], get_enum (ctrl));
 	}
 
-	for (unsigned int r = 0; r < SMI; ++r) {
+	for (unsigned int r = 0; r < ui->device->smi; ++r) {
 		ctrl = matrix_sel (ui, r);
 		robtk_select_set_value (ui->mtx_sel[r], get_enum (ctrl));
 
-		for (unsigned int c = 0; c < SMO; ++c) {
-			unsigned int n = r * SMO + c;
+		for (unsigned int c = 0; c < ui->device->smo; ++c) {
+			unsigned int n = r * ui->device->smo + c;
 			ctrl = matrix_ctrl_cr (ui, c, r);
 			robtk_dial_set_value (ui->mtx_gain[n], db_to_knob (get_dB (ctrl)));
 		}
 	}
 
-	for (unsigned int o = 0; o < SMST; ++o) {
+	for (unsigned int o = 0; o < ui->device->smst; ++o) {
 		ctrl = out_gain (ui, o);
 		robtk_dial_set_value (ui->out_gain[o], db_to_knob (get_dB (ctrl)));
 		robtk_dial_set_state (ui->out_gain[o], get_mute (ctrl) ? 1 : 0);
@@ -1178,11 +1245,11 @@ port_event (LV2UI_Handle handle,
 	robtk_dial_set_value (ui->mst_gain, db_to_knob (get_dB (ctrl)));
 	robtk_dial_set_state (ui->mst_gain, get_mute (ctrl) ? 1 : 0);
 
-	for (unsigned int i = 0; i < 2; ++i) {
+	for (unsigned int i = 0; i < ui->device->num_hiz; ++i) {
 		robtk_cbtn_set_active (ui->btn_hiz[i], get_enum (hiz (ui, i)) == 1);
 	}
 
-	for (unsigned int o = 0; o < SOUT; ++o) {
+	for (unsigned int o = 0; o < ui->device->sout; ++o) {
 		ctrl = out_sel (ui, o);
 		robtk_select_set_value (ui->out_sel[o], get_enum (ctrl));
 	}
