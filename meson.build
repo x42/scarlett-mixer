@@ -15,9 +15,6 @@ deps = [
   cc.find_library('X11'),
 ]
 
-name = 'Scarlett ' + get_option('num_inputs') + 'i' + get_option('num_outputs')
-apptitle = '-DAPPTITLE="' + name + ' Mixer"'
-
 executable('scarlett-mixer',
   sources: [
     'robtk/robtkapp.c',
@@ -27,7 +24,7 @@ executable('scarlett-mixer',
   dependencies: deps,
   include_directories: include_directories('robtk'),
   c_args: [
-    apptitle,
+    '-DAPPTITLE="Scarlett 18i6/18i8 Mixer"',
     '-DDEFAULT_NOT_ONTOP',
     '-DXTERNAL_UI',
     '-DHAVE_IDLE_IFACE',
