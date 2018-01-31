@@ -8,8 +8,8 @@ Currently supported models:
 This is a quick hack, it's prepared for other Scarlett devices, but you're on your own..
 
 
-Build-dependencies: gnu-make, a c-compiler, libpango, libcairo
-and openGL (sometimes called: glu, glx, mesa).
+Build-dependencies: gnu-make, a c-compiler, pkg-config, libpango, libcairo,
+lv2 (SDK), alsa (libasound) and openGL (sometimes called: glu, glx, mesa).
 
 ```bash
   git clone git://github.com/x42/scarlett-mixer
