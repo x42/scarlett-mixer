@@ -17,12 +17,17 @@
  * Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+#ifndef DEFAULT_DEVICE
+#define DEFAULT_DEVICE "hw:2"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <getopt.h>
 #include <alsa/asoundlib.h>
 
 #define RTK_URI "http://gareus.org/oss/scarlettmixer#"
@@ -1126,7 +1131,45 @@ static void gui_cleanup (RobTkApp* ui) {
 }
 
 /* *****************************************************************************
- * RobTk + LV2
+ * options + help
+ */
+
+static struct option const long_options[] =
+{
+	{"help", no_argument, 0, 'h'},
+	{"version", no_argument, 0, 'V'},
+	{NULL, 0, NULL, 0}
+};
+
+static void usage (int status) {
+  printf ("scarlett-mixer - Mixer GUI for Focusrite Scarlett USB Devices.\n\n\
+A graphical audio-mixer user-interface that exposes the direct raw controls of\n\
+the hardware mixer in the Focusrite(R)-Scarlett(TM) Series of USB soundcards.\n\
+\n\
+The device name needs to be given on the commandline, by default '%s' is used.\n\
+\n\
+Supported devices:\n\
+", DEFAULT_DEVICE);
+
+	for (unsigned i = 0; i < NUM_DEVICES; i++) {
+		printf ("* %s\n", devices[i].name);
+	}
+
+  printf ("Usage: scarlett-mixer [ OPTIONS ] [ DEVICE ]\n\n");
+  printf ("Options:\n\
+  -h, --help                 display this help and exit\n\
+  -V, --version              print version information and exit\n\
+\n\n\
+Examples:\n\
+scarlett-mixer hw:1\n\
+\n");
+  printf ("Report bugs to <https://github.com/x42/scarlett-mixer/issues>\n");
+  exit (status);
+}
+
+
+/* *****************************************************************************
+ * RobTk-app (LV2 wrapper)
  */
 
 #define LVGL_RESIZEABLE
@@ -1146,7 +1189,7 @@ instantiate (
 		const LV2_Feature* const* features)
 {
 	RobTkApp* ui = (RobTkApp*) calloc (1,sizeof (RobTkApp));
-	char const* card = "hw:2";
+	char const* card = DEFAULT_DEVICE;
 
 	struct _rtkargv { int argc; char **argv; };
 	struct _rtkargv* rtkargv = NULL;
@@ -1157,8 +1200,31 @@ instantiate (
 		}
 	}
 
-	if (rtkargv && rtkargv->argc > 1) {
-		card = rtkargv->argv[1];
+	int c;
+	while (rtkargv && (c = getopt_long (rtkargv->argc, rtkargv->argv,
+			   "h"	/* help */
+			   "V",	/* version */
+			   long_options, (int *) 0)) != EOF) {
+		switch (c) {
+			case 'V':
+				printf ("scarlet-mixer version %s\n\n", VERSION);
+				printf ("Copyright (C) GPL 2017 Robin Gareus <robin@gareus.org>\n");
+				exit (0);
+
+			case 'h':
+				usage (0);
+
+			default:
+				usage (EXIT_FAILURE);
+		}
+	}
+
+	if (rtkargv && rtkargv->argc > optind + 1) {
+				usage (EXIT_FAILURE);
+	}
+
+	if (rtkargv && rtkargv->argc > optind) {
+		card = rtkargv->argv[optind];
 	}
 
 	// TODO probe all devices find the first matching DEVICE_NAME
