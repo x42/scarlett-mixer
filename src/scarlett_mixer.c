@@ -101,6 +101,24 @@ static Device devices[] = {
         .hiz_map = { 13, 15 },
         .pad_map = { 14, 16, 17, 18 },
     },
+    {
+        .name = "Scarlett 6i6 USB",
+        .smi = 6, .smo = 6,
+        .sin = 6, .sout = 6,
+        .smst = 3,
+        .num_monitor = 1,
+        .num_phones = 1,
+        .num_hiz = 2,
+        .num_pad = 0,
+        .matrix_mix_offset = 33, .matrix_mix_stride = 9, // XXX stride should be 7, bug in kernel-driver ?!
+        .matrix_in_offset = 22, .matrix_in_stride = 9,   // XXX stride should be 7, bug in kernel-driver ?!
+        .out_gain_map = { 1 /* Monitor */, 4 /* Headphone */, 7 /* SPDIF */, -1 },
+        .out_gain_labels = { "Monitor", "Headphone", "ADAT", "" },
+        .out_bus_map = { 2, 3, 5, 6, 8, 9, -1, -1 },
+        .input_offset = 16,
+        .hiz_map = { 10, 12 },
+        .pad_map = { -1, -1, -1, -1 },
+    },
 };
 
 #define NUM_DEVICES     (sizeof (devices) / sizeof (devices[0]))
