@@ -48,11 +48,11 @@
 
 typedef struct {
 	const char  name[64];
-	unsigned    smi;
-	unsigned    smo;
-	unsigned    sin;
-	unsigned    sout;
-	unsigned    smst;
+	unsigned    smi;  //< mixer matrix inputs
+	unsigned    smo;  //< mixer matrix outputs
+	unsigned    sin;  //< inputs (capture select)
+	unsigned    sout; //< outputs assigns (=?= smo)
+	unsigned    smst; //< main outputs (stereo gain controls w/mute =?= sout / 2)
 	unsigned    num_monitor;
 	unsigned    num_phones;
 	unsigned    num_hiz;
