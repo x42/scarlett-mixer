@@ -1,6 +1,6 @@
 /* scarlett mixer GUI
  *
- * Copyright 2015,2016 Robin Gareus <robin@gareus.org>
+ * Copyright 2015-2017 Robin Gareus <robin@gareus.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,83 +47,83 @@
 #define MAX_PADS    4
 
 typedef struct {
-    const char  name[64];
-    unsigned    smi;
-    unsigned    smo;
-    unsigned    sin;
-    unsigned    sout;
-    unsigned    smst;
-    unsigned    num_monitor;
-    unsigned    num_phones;
-    unsigned    num_hiz;
-    unsigned    num_pad;
-    unsigned    matrix_mix_offset;
-    unsigned    matrix_mix_stride;
-    unsigned    matrix_in_offset;
-    unsigned    matrix_in_stride;
-    unsigned    input_offset;
-    int         out_gain_map[MAX_GAINS];
-    const char  out_gain_labels[MAX_GAINS][16];
-    int         out_bus_map[MAX_BUSSES];
-    int         hiz_map[MAX_HIZS];
-    int         pad_map[MAX_PADS];
+	const char  name[64];
+	unsigned    smi;
+	unsigned    smo;
+	unsigned    sin;
+	unsigned    sout;
+	unsigned    smst;
+	unsigned    num_monitor;
+	unsigned    num_phones;
+	unsigned    num_hiz;
+	unsigned    num_pad;
+	unsigned    matrix_mix_offset;
+	unsigned    matrix_mix_stride;
+	unsigned    matrix_in_offset;
+	unsigned    matrix_in_stride;
+	unsigned    input_offset;
+	int         out_gain_map[MAX_GAINS];
+	const char  out_gain_labels[MAX_GAINS][16];
+	int         out_bus_map[MAX_BUSSES];
+	int         hiz_map[MAX_HIZS];
+	int         pad_map[MAX_PADS];
 } Device;
 
 static Device devices[] = {
-    {
-        .name = "Scarlett 18i6 USB",
-        .smi = 18, .smo = 6,
-        .sin = 18, .sout = 6,
-        .smst = 3,
-        .num_monitor = 1,
-        .num_phones = 1,
-        .num_hiz = 2,
-        .num_pad = 0,
-        .matrix_mix_offset = 33, .matrix_mix_stride = 7,
-        .matrix_in_offset = 32, .matrix_in_stride = 7,
-        .input_offset = 13,
-        .out_gain_map = { 1 /* Monitor */, 4 /* Headphone */, 7 /* SPDIF */, -1 },
-        .out_gain_labels = { "Monitor", "Headphone", "ADAT", "" },
-        .out_bus_map = { 2, 3, 5, 6, 8, 9, -1, -1 },
-        .hiz_map = { 11, 12 },
-        .pad_map = { -1, -1, -1, -1 },
-    },
-    {
-        .name = "Scarlett 18i8 USB",
-        .smi = 18, .smo = 8,
-        .sin = 18, .sout = 8,
-        .smst = 4,
-        .num_monitor = 1,
-        .num_phones = 2,
-        .num_hiz = 2,
-        .num_pad = 4,
-        .matrix_mix_offset = 38, .matrix_mix_stride = 9,
-        .matrix_in_offset = 37, .matrix_in_stride = 9,
-        .input_offset = 19,
-        .out_gain_map = { 1 /* Monitor */, 4 /* Headphone 1 */, 7 /* Headphone 2 */, 10 /* SPDIF */ },
-        .out_gain_labels = { "Monitor", "Headphone 1", "Headphone 2", "ADAT" },
-        .out_bus_map = { 2, 3, 5, 6, 8, 9, 11, 12 },
-        .hiz_map = { 13, 15 },
-        .pad_map = { 14, 16, 17, 18 },
-    },
-    {
-        .name = "Scarlett 6i6 USB",
-        .smi = 6, .smo = 6,
-        .sin = 6, .sout = 6,
-        .smst = 3,
-        .num_monitor = 1,
-        .num_phones = 1,
-        .num_hiz = 2,
-        .num_pad = 0,
-        .matrix_mix_offset = 33, .matrix_mix_stride = 9, // XXX stride should be 7, bug in kernel-driver ?!
-        .matrix_in_offset = 22, .matrix_in_stride = 9,   // XXX stride should be 7, bug in kernel-driver ?!
-        .out_gain_map = { 1 /* Monitor */, 4 /* Headphone */, 7 /* SPDIF */, -1 },
-        .out_gain_labels = { "Monitor", "Headphone", "ADAT", "" },
-        .out_bus_map = { 2, 3, 5, 6, 8, 9, -1, -1 },
-        .input_offset = 16,
-        .hiz_map = { 10, 12 },
-        .pad_map = { -1, -1, -1, -1 },
-    },
+	{
+		.name = "Scarlett 18i6 USB",
+		.smi = 18, .smo = 6,
+		.sin = 18, .sout = 6,
+		.smst = 3,
+		.num_monitor = 1,
+		.num_phones = 1,
+		.num_hiz = 2,
+		.num_pad = 0,
+		.matrix_mix_offset = 33, .matrix_mix_stride = 7,
+		.matrix_in_offset = 32, .matrix_in_stride = 7,
+		.input_offset = 13,
+		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone */, 7 /* SPDIF */, -1 },
+		.out_gain_labels = { "Monitor", "Headphone", "ADAT", "" },
+		.out_bus_map = { 2, 3, 5, 6, 8, 9, -1, -1 },
+		.hiz_map = { 11, 12 },
+		.pad_map = { -1, -1, -1, -1 },
+	},
+	{
+		.name = "Scarlett 18i8 USB",
+		.smi = 18, .smo = 8,
+		.sin = 18, .sout = 8,
+		.smst = 4,
+		.num_monitor = 1,
+		.num_phones = 2,
+		.num_hiz = 2,
+		.num_pad = 4,
+		.matrix_mix_offset = 38, .matrix_mix_stride = 9,
+		.matrix_in_offset = 37, .matrix_in_stride = 9,
+		.input_offset = 19,
+		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone 1 */, 7 /* Headphone 2 */, 10 /* SPDIF */ },
+		.out_gain_labels = { "Monitor", "Headphone 1", "Headphone 2", "ADAT" },
+		.out_bus_map = { 2, 3, 5, 6, 8, 9, 11, 12 },
+		.hiz_map = { 13, 15 },
+		.pad_map = { 14, 16, 17, 18 },
+	},
+	{
+		.name = "Scarlett 6i6 USB",
+		.smi = 6, .smo = 6,
+		.sin = 6, .sout = 6,
+		.smst = 3,
+		.num_monitor = 1,
+		.num_phones = 1,
+		.num_hiz = 2,
+		.num_pad = 0,
+		.matrix_mix_offset = 33, .matrix_mix_stride = 9, // XXX stride should be 7, bug in kernel-driver ?!
+		.matrix_in_offset = 22, .matrix_in_stride = 9,   // XXX stride should be 7, bug in kernel-driver ?!
+		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone */, 7 /* SPDIF */, -1 },
+		.out_gain_labels = { "Monitor", "Headphone", "ADAT", "" },
+		.out_bus_map = { 2, 3, 5, 6, 8, 9, -1, -1 },
+		.input_offset = 16,
+		.hiz_map = { 10, 12 },
+		.pad_map = { -1, -1, -1, -1 },
+	},
 };
 
 #define NUM_DEVICES     (sizeof (devices) / sizeof (devices[0]))
@@ -163,7 +163,7 @@ typedef struct {
 	PangoFontDescription* font;
 	cairo_surface_t*      mtx_sf[6];
 
-    Device*      device;
+	Device*      device;
 	Mctrl*       ctrl;
 	unsigned int ctrl_cnt;
 	snd_mixer_t* mixer;
@@ -240,20 +240,20 @@ static int src_sel_default (unsigned int r, int max_values)
 /* Output Gains */
 static Mctrl* out_gain (RobTkApp* ui, unsigned int c)
 {
-    assert (c < MAX_GAINS);
-    return &ui->ctrl[ui->device->out_gain_map[c]];
+	assert (c < MAX_GAINS);
+	return &ui->ctrl[ui->device->out_gain_map[c]];
 }
 
 static const char* out_gain_label (RobTkApp *ui, int n)
 {
-    return ui->device->out_gain_labels[n];
+	return ui->device->out_gain_labels[n];
 }
 
 /* Output Bus assignment (matrix-out to master) */
 static Mctrl* out_sel (RobTkApp* ui, unsigned int c)
 {
-    assert (c < MAX_BUSSES);
-    return &ui->ctrl[ui->device->out_bus_map[c]];
+	assert (c < MAX_BUSSES);
+	return &ui->ctrl[ui->device->out_bus_map[c]];
 }
 
 static int out_sel_default (unsigned int c)
@@ -265,15 +265,15 @@ static int out_sel_default (unsigned int c)
 /* Hi-Z switches */
 static Mctrl* hiz (RobTkApp* ui, unsigned int c)
 {
-    assert (c < ui->device->num_hiz);
-    return &ui->ctrl[ui->device->hiz_map[c]];
+	assert (c < ui->device->num_hiz);
+	return &ui->ctrl[ui->device->hiz_map[c]];
 }
 
 /* Pad switches */
 static Mctrl* pad (RobTkApp *ui, unsigned c)
 {
-    assert (c < ui->device->num_pad);
-    return &ui->ctrl[ui->device->pad_map[c]];
+	assert (c < ui->device->num_pad);
+	return &ui->ctrl[ui->device->pad_map[c]];
 }
 
 /* master gain */
@@ -312,26 +312,28 @@ static int open_mixer (RobTkApp* ui, const char* card)
 		fprintf (stderr, "Control device %s open error: %s\n", card, snd_strerror (err));
 		return err;
 	}
+
 	if ((err = snd_ctl_card_info (hctl, card_info)) < 0) {
 		fprintf (stderr, "Control device %s hw info error: %s\n", card, snd_strerror (err));
 		return err;
 	}
+
 	const char* card_name = snd_ctl_card_info_get_name (card_info);
 	snd_ctl_close (hctl);
 
-    if (!card_name) {
-        fprintf (stderr, "Device `%s' is unknown\n", card);
-        return -1;
-    }
+	if (!card_name) {
+		fprintf (stderr, "Device `%s' is unknown\n", card);
+		return -1;
+	}
 
-    ui->device = NULL;
+	ui->device = NULL;
 
-    for (unsigned i = 0; i < NUM_DEVICES; i++) {
-        if (!strcmp (card_name, devices[i].name))
-            ui->device = &devices[i];
-    }
+	for (unsigned i = 0; i < NUM_DEVICES; i++) {
+		if (!strcmp (card_name, devices[i].name))
+			ui->device = &devices[i];
+	}
 
-    if (ui->device == NULL) {
+	if (ui->device == NULL) {
 		fprintf (stderr, "Device `%s' is not supported\n", card);
 		return -1;
 	}
@@ -481,7 +483,7 @@ static int get_enum (Mctrl* c)
 static float db_to_knob (float db)
 {
 	float k = (db + 128.f) / 228.75f;
-  float s = k * sqrt (0.5) / (1 - k);
+	float s = k * sqrt (0.5) / (1 - k);
 	return s * s;
 }
 
@@ -829,20 +831,20 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	create_faceplate (ui);
 	ui->font = pango_font_description_from_string ("Mono 9px");
 
-    /* device dependent construction */
-    ui->mtx_sel = malloc (ui->device->sin * sizeof (RobTkSelect *));
+	/* device dependent construction */
+	ui->mtx_sel = malloc (ui->device->sin * sizeof (RobTkSelect *));
 	ui->mtx_gain = malloc (ui->device->smi * ui->device->smo * sizeof (RobTkDial *));
-    ui->mtx_lbl = malloc (ui->device->smo * sizeof (RobTkLbl *));
+	ui->mtx_lbl = malloc (ui->device->smo * sizeof (RobTkLbl *));
 
-    ui->src_lbl = malloc (ui->device->sin * sizeof (RobTkLbl *));
-    ui->src_sel = malloc (ui->device->sin * sizeof (RobTkSelect *));
+	ui->src_lbl = malloc (ui->device->sin * sizeof (RobTkLbl *));
+	ui->src_sel = malloc (ui->device->sin * sizeof (RobTkSelect *));
 
-    ui->out_lbl = malloc (ui->device->smst * sizeof (RobTkLbl *));
-    ui->out_sel = malloc (ui->device->sout * sizeof (RobTkSelect *));
-    ui->out_gain = malloc (ui->device->smst * sizeof (RobTkDial *));
+	ui->out_lbl = malloc (ui->device->smst * sizeof (RobTkLbl *));
+	ui->out_sel = malloc (ui->device->sout * sizeof (RobTkSelect *));
+	ui->out_gain = malloc (ui->device->smst * sizeof (RobTkDial *));
 
-    ui->btn_hiz = malloc (ui->device->num_hiz * sizeof (RobTkCBtn *));
-    ui->btn_pad = malloc (ui->device->num_pad * sizeof (RobTkCBtn *));
+	ui->btn_hiz = malloc (ui->device->num_hiz * sizeof (RobTkCBtn *));
+	ui->btn_pad = malloc (ui->device->num_pad * sizeof (RobTkCBtn *));
 
 	const int c0 = 4; // matrix column offset
 	const int rb = 2 + ui->device->smi; // matrix bottom
@@ -891,7 +893,7 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	rob_table_attach (ui->matrix, robtk_sep_widget (ui->sep_v), 3, 4, 0, rb, 10, 0, RTK_SHRINK, RTK_FILL);
 
 	/* matrix */
-    unsigned int r;
+	unsigned int r;
 
 	for (r = 0; r < ui->device->smi; ++r) {
 		ui->mtx_sel[r] = robtk_select_new ();
@@ -1016,14 +1018,14 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 				i, i + 1, 3, 4, 0, 0, RTK_SHRINK, RTK_SHRINK);
 	}
 
-    /* Pads */
-    for (unsigned int i = 0; i < ui->device->num_pad; ++i) {
-        ui->btn_pad[i] = robtk_cbtn_new ("Pad", GBT_LED_LEFT, false);
+	/* Pads */
+	for (unsigned int i = 0; i < ui->device->num_pad; ++i) {
+		ui->btn_pad[i] = robtk_cbtn_new ("Pad", GBT_LED_LEFT, false);
 		robtk_cbtn_set_active (ui->btn_pad[i], get_enum (pad (ui, i)) == 1);
 		robtk_cbtn_set_callback (ui->btn_pad[i], cb_set_pad, ui);
-        rob_table_attach (ui->output, robtk_cbtn_widget (ui->btn_pad[i]),
-                i, i + 1, 4, 5, 0, 0, RTK_SHRINK, RTK_SHRINK);
-    }
+		rob_table_attach (ui->output, robtk_cbtn_widget (ui->btn_pad[i]),
+				i, i + 1, 4, 5, 0, 0, RTK_SHRINK, RTK_SHRINK);
+	}
 
 	/* output selectors */
 	for (unsigned int o = 0; o < ui->device->sout; ++o) {
@@ -1115,19 +1117,19 @@ static void gui_cleanup (RobTkApp* ui) {
 
 	pango_font_description_free (ui->font);
 
-    free (ui->mtx_sel);
+	free (ui->mtx_sel);
 	free (ui->mtx_gain);
-    free (ui->mtx_lbl);
+	free (ui->mtx_lbl);
 
-    free (ui->src_lbl);
-    free (ui->src_sel);
+	free (ui->src_lbl);
+	free (ui->src_sel);
 
-    free (ui->out_lbl);
-    free (ui->out_sel);
-    free (ui->out_gain);
+	free (ui->out_lbl);
+	free (ui->out_sel);
+	free (ui->out_gain);
 
-    free (ui->btn_hiz);
-    free (ui->btn_pad);
+	free (ui->btn_hiz);
+	free (ui->btn_pad);
 }
 
 /* *****************************************************************************
@@ -1142,7 +1144,7 @@ static struct option const long_options[] =
 };
 
 static void usage (int status) {
-  printf ("scarlett-mixer - Mixer GUI for Focusrite Scarlett USB Devices.\n\n\
+	printf ("scarlett-mixer - Mixer GUI for Focusrite Scarlett USB Devices.\n\n\
 A graphical audio-mixer user-interface that exposes the direct raw controls of\n\
 the hardware mixer in the Focusrite(R)-Scarlett(TM) Series of USB soundcards.\n\
 \n\
@@ -1155,16 +1157,16 @@ Supported devices:\n\
 		printf ("* %s\n", devices[i].name);
 	}
 
-  printf ("Usage: scarlett-mixer [ OPTIONS ] [ DEVICE ]\n\n");
-  printf ("Options:\n\
+	printf ("Usage: scarlett-mixer [ OPTIONS ] [ DEVICE ]\n\n");
+	printf ("Options:\n\
   -h, --help                 display this help and exit\n\
   -V, --version              print version information and exit\n\
 \n\n\
 Examples:\n\
 scarlett-mixer hw:1\n\
 \n");
-  printf ("Report bugs to <https://github.com/x42/scarlett-mixer/issues>\n");
-  exit (status);
+	printf ("Report bugs to <https://github.com/x42/scarlett-mixer/issues>\n");
+	exit (status);
 }
 
 
