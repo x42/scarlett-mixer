@@ -297,8 +297,9 @@ static Mctrl* mst_gain (RobTkApp* ui)
  * Alsa Mixer Interface
  */
 
-static int open_mixer (RobTkApp* ui, const char* card)
+static int open_mixer (RobTkApp* ui, const char* card, int probe)
 {
+	int rv = 0;
 	int err;
 	snd_mixer_selem_id_t *sid;
 	snd_mixer_elem_t *elem;
@@ -335,7 +336,10 @@ static int open_mixer (RobTkApp* ui, const char* card)
 
 	if (ui->device == NULL) {
 		fprintf (stderr, "Device `%s' is not supported\n", card);
-		return -1;
+		rv = -1;
+		if (probe == 0) {
+			return -1;
+		}
 	}
 
 	if ((err = snd_mixer_open (&ui->mixer, 0)) < 0) {
@@ -375,6 +379,10 @@ static int open_mixer (RobTkApp* ui, const char* card)
 		return -1;
 	}
 
+	if (probe) {
+		fprintf (stderr, "Device `%s' has %d contols: \n", card_name, cnt);
+	}
+
 	ui->ctrl = (Mctrl*)calloc (cnt, sizeof (Mctrl));
 
 	int i = 0;
@@ -387,16 +395,16 @@ static int open_mixer (RobTkApp* ui, const char* card)
 		c->elem = elem;
 		c->name = strdup (snd_mixer_selem_get_name (elem));
 
-#if 0 // Print Controls
-		printf ("%d %s", i, c->name);
-		if (snd_mixer_selem_is_enumerated (elem)) { printf (", ENUM"); }
-		if (snd_mixer_selem_has_playback_switch (elem)) { printf (", PBS"); }
-		if (snd_mixer_selem_has_capture_switch (elem)) { printf (", CPS"); }
-		printf ("\n");
-#endif
+		if (probe > 0) {
+			printf (" %d %s", i, c->name);
+			if (snd_mixer_selem_is_enumerated (elem)) { printf (", ENUM"); }
+			if (snd_mixer_selem_has_playback_switch (elem)) { printf (", PBS"); }
+			if (snd_mixer_selem_has_capture_switch (elem)) { printf (", CPS"); }
+			printf ("\n");
+		}
 		++i;
 	}
-	return 0;
+	return rv;
 }
 
 static void close_mixer (RobTkApp* ui)
@@ -405,7 +413,9 @@ static void close_mixer (RobTkApp* ui)
 		free (ui->ctrl[i].name);
 	}
 	free (ui->ctrl);
-	snd_mixer_close (ui->mixer);
+	if (ui->mixer) {
+		snd_mixer_close (ui->mixer);
+	}
 }
 
 static void set_mute (Mctrl* c, bool muted)
@@ -1139,6 +1149,7 @@ static void gui_cleanup (RobTkApp* ui) {
 static struct option const long_options[] =
 {
 	{"help", no_argument, 0, 'h'},
+	{"print-controls", no_argument, 0, 'p'},
 	{"version", no_argument, 0, 'V'},
 	{NULL, 0, NULL, 0}
 };
@@ -1160,6 +1171,7 @@ Supported devices:\n\
 	printf ("Usage: scarlett-mixer [ OPTIONS ] [ DEVICE ]\n\n");
 	printf ("Options:\n\
   -h, --help                 display this help and exit\n\
+  -p, --print-controls       list control parameters of given soundcard\n\
   -V, --version              print version information and exit\n\
 \n\n\
 Examples:\n\
@@ -1202,9 +1214,11 @@ instantiate (
 		}
 	}
 
+	int probe = 0;
 	int c;
 	while (rtkargv && (c = getopt_long (rtkargv->argc, rtkargv->argv,
 			   "h"	/* help */
+			   "p"	/* print-controls */
 			   "V",	/* version */
 			   long_options, (int *) 0)) != EOF) {
 		switch (c) {
@@ -1212,7 +1226,9 @@ instantiate (
 				printf ("scarlet-mixer version %s\n\n", VERSION);
 				printf ("Copyright (C) GPL 2017 Robin Gareus <robin@gareus.org>\n");
 				exit (0);
-
+			case 'p':
+				probe = 1;
+				break;
 			case 'h':
 				usage (0);
 
@@ -1231,12 +1247,11 @@ instantiate (
 
 	// TODO probe all devices find the first matching DEVICE_NAME
 
-	if (open_mixer (ui, card)) {
+	if (open_mixer (ui, card, probe)) {
+		close_mixer (ui);
 		free (ui);
 		return 0;
 	}
-
-	// TODO check if device is an 18i6
 
 	ui->disable_signals = true;
 	*widget = toplevel (ui, ui_toplevel);
