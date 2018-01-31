@@ -1073,11 +1073,13 @@ static void gui_cleanup (RobTkApp* ui) {
 	robtk_lbl_destroy (ui->out_mst);
 	robtk_dial_destroy (ui->mst_gain);
 
-    for (int i = 0; i < ui->device->num_hiz; i++)
-        robtk_cbtn_destroy (ui->btn_hiz[i]);
+	for (int i = 0; i < ui->device->num_hiz; i++) {
+		robtk_cbtn_destroy (ui->btn_hiz[i]);
+	}
 
-    for (int i = 0; i < ui->device->num_pad; i++)
-        robtk_cbtn_destroy (ui->btn_pad[i]);
+	for (int i = 0; i < ui->device->num_pad; i++) {
+		robtk_cbtn_destroy (ui->btn_pad[i]);
+	}
 
 	robtk_sep_destroy (ui->sep_v);
 	robtk_sep_destroy (ui->sep_h);
