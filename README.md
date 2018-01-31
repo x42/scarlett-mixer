@@ -1,5 +1,9 @@
-Graphical Mixer Interface for the Scarlett 18i6
-===============================================
+Graphical Mixer Interface for the Scarlett series
+=================================================
+
+Currently supported models:
+- 18i6
+- 18i8
 
 This is a quick hack, it's prepared for other Scarlett devices, but you're on your own..
 
