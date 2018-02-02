@@ -127,8 +127,8 @@ static Device devices[] = {
 	{
 		.name = "Scarlett 18i20 USB",
 		.smi = 18, .smo = 8,
-		.sin = 18, .sout = 8,
-		.smst = 20,
+		.sin = 18, .sout = 20,
+		.smst = 10,
 		.num_monitor = 1,
 		.num_phones = 0,
 		.num_hiz = 0,
