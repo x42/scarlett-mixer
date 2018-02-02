@@ -1013,8 +1013,11 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 
 	/* output level + labels */
 	for (unsigned int o = 0; o < ui->device->smst; ++o) {
+		int row = 4 * floor (o / 5); // beware of bleed into Hi-Z, Pads
+		int oc = o % 5;
+
 		ui->out_lbl[o]  = robtk_lbl_new (out_gain_label (ui, o));
-		rob_table_attach (ui->output, robtk_lbl_widget (ui->out_lbl[o]), 3 * o + 2, 3 * o + 5, 0, 1, 2, 2, RTK_SHRINK, RTK_SHRINK);
+		rob_table_attach (ui->output, robtk_lbl_widget (ui->out_lbl[o]), 3 * oc + 2, 3 * oc + 5, row, row + 1, 2, 2, RTK_SHRINK, RTK_SHRINK);
 
 		Mctrl* ctrl = out_gain (ui, o);
 		ui->out_gain[o] = robtk_dial_new_with_size (
@@ -1031,7 +1034,7 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 		robtk_dial_set_state (ui->out_gain[o], get_mute (ctrl) ? 1 : 0);
 		robtk_dial_set_callback (ui->out_gain[o], cb_out_gain, ui);
 		robtk_dial_annotation_callback (ui->out_gain[o], dial_annotation_db, ui);
-		rob_table_attach (ui->output, robtk_dial_widget (ui->out_gain[o]), 3 * o + 2, 3 * o + 5, 1, 2, 2, 0, RTK_SHRINK, RTK_SHRINK);
+		rob_table_attach (ui->output, robtk_dial_widget (ui->out_gain[o]), 3 * oc + 2, 3 * oc + 5, row + 1, row + 2, 2, 0, RTK_SHRINK, RTK_SHRINK);
 
 		memcpy (ui->out_gain[o]->rw->name, &o, sizeof (unsigned int));
 	}
@@ -1056,6 +1059,10 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 
 	/* output selectors */
 	for (unsigned int o = 0; o < ui->device->sout; ++o) {
+		int row = 4 * floor (o / 10); // beware of bleed into Hi-Z, Pads
+		int pc = 3 * (o / 2); /* stereo-pair column */
+		pc %= 15;
+
 		ui->out_sel[o] = robtk_select_new ();
 		Mctrl* sctrl = out_sel (ui, o);
 		set_select_values (ui->out_sel[o], sctrl);
@@ -1063,13 +1070,12 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 		robtk_select_set_callback (ui->out_sel[o], cb_out_src, ui);
 
 		memcpy (ui->out_sel[o]->rw->name, &o, sizeof (unsigned int));
-		int pc = 3 * (o / 2); /* stereo-pair column */
 		if (o & 1) {
 			/* right channel */
-			rob_table_attach (ui->output, robtk_select_widget (ui->out_sel[o]), 3 + pc, 5 + pc, 3, 4, 2, 2, RTK_SHRINK, RTK_SHRINK);
+			rob_table_attach (ui->output, robtk_select_widget (ui->out_sel[o]), 3 + pc, 5 + pc, row + 3, row + 4, 2, 2, RTK_SHRINK, RTK_SHRINK);
 		} else {
 			/* left channel */
-			rob_table_attach (ui->output, robtk_select_widget (ui->out_sel[o]), 2 + pc, 4 + pc, 2, 3, 2, 2, RTK_SHRINK, RTK_SHRINK);
+			rob_table_attach (ui->output, robtk_select_widget (ui->out_sel[o]), 2 + pc, 4 + pc, row + 2, row + 3, 2, 2, RTK_SHRINK, RTK_SHRINK);
 		}
 	}
 
