@@ -4,6 +4,8 @@ Graphical Mixer Interface for the Scarlett series
 Currently supported models:
 - 18i6
 - 18i8
+- 18i20
+- 6i6 (untested)
 
 This is a quick hack, it's prepared for other Scarlett devices, but you're on your own..
 
