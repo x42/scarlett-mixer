@@ -138,7 +138,7 @@ static Device devices[] = {
 		.input_offset = 31,
 		.out_gain_map = { 1, 7, 10, 13, 16, 19, 22, 25, 28, 2  },
 		.out_gain_labels = { "Monitor", "Line 3/4", "Line 5/6", "Line 7/8", "Line 9/10" , "SPDIF", "ADAT 1/2", "ADAT 3/4", "ADAT 5/6", "ADAT 7/8" },
-		.out_bus_map = { 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 29, 30, 2, 3 },
+		.out_bus_map = { 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 29, 30, 3, 4 },
 		.hiz_map = { -1, -1 },
 		.pad_map = { -1, -1, -1, -1 },
 	},
