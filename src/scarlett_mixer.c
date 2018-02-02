@@ -53,8 +53,6 @@ typedef struct {
 	unsigned    sin;  //< inputs (capture select)
 	unsigned    sout; //< outputs assigns (=?= smo)
 	unsigned    smst; //< main outputs (stereo gain controls w/mute =?= sout / 2)
-	unsigned    num_monitor;
-	unsigned    num_phones;
 	unsigned    num_hiz;
 	unsigned    num_pad;
 	unsigned    matrix_mix_offset;
@@ -75,8 +73,6 @@ static Device devices[] = {
 		.smi = 18, .smo = 6,
 		.sin = 18, .sout = 6,
 		.smst = 3,
-		.num_monitor = 1,
-		.num_phones = 1,
 		.num_hiz = 2,
 		.num_pad = 0,
 		.matrix_mix_offset = 33, .matrix_mix_stride = 7,
@@ -93,8 +89,6 @@ static Device devices[] = {
 		.smi = 18, .smo = 8,
 		.sin = 18, .sout = 8,
 		.smst = 4,
-		.num_monitor = 1,
-		.num_phones = 2,
 		.num_hiz = 2,
 		.num_pad = 4,
 		.matrix_mix_offset = 38, .matrix_mix_stride = 9,
@@ -111,8 +105,6 @@ static Device devices[] = {
 		.smi = 6, .smo = 6,
 		.sin = 6, .sout = 6,
 		.smst = 3,
-		.num_monitor = 1,
-		.num_phones = 1,
 		.num_hiz = 2,
 		.num_pad = 0,
 		.matrix_mix_offset = 33, .matrix_mix_stride = 9, // XXX stride should be 7, bug in kernel-driver ?!
@@ -129,8 +121,6 @@ static Device devices[] = {
 		.smi = 18, .smo = 8,
 		.sin = 18, .sout = 20,
 		.smst = 10,
-		.num_monitor = 1,
-		.num_phones = 0,
 		.num_hiz = 0,
 		.num_pad = 0,
 		.matrix_mix_offset = 50, .matrix_mix_stride = 9,
