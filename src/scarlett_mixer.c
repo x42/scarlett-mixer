@@ -41,8 +41,8 @@
  * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/sound/usb/mixer_scarlett.c#n635
  */
 
-#define MAX_GAINS   4
-#define MAX_BUSSES  8
+#define MAX_GAINS   10
+#define MAX_BUSSES  20
 #define MAX_HIZS    2
 #define MAX_PADS    4
 
@@ -82,9 +82,9 @@ static Device devices[] = {
 		.matrix_mix_offset = 33, .matrix_mix_stride = 7,
 		.matrix_in_offset = 32, .matrix_in_stride = 7,
 		.input_offset = 13,
-		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone */, 7 /* SPDIF */, -1 },
-		.out_gain_labels = { "Monitor", "Headphone", "ADAT", "" },
-		.out_bus_map = { 2, 3, 5, 6, 8, 9, -1, -1 },
+		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone */, 7 /* SPDIF */, -1, -1 , -1, -1, -1, -1, -1 },
+		.out_gain_labels = { "Monitor", "Headphone", "ADAT", "", "", "", "", "", "", "" },
+		.out_bus_map = { 2, 3, 5, 6, 8, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
 		.hiz_map = { 11, 12 },
 		.pad_map = { -1, -1, -1, -1 },
 	},
@@ -100,9 +100,9 @@ static Device devices[] = {
 		.matrix_mix_offset = 38, .matrix_mix_stride = 9,
 		.matrix_in_offset = 37, .matrix_in_stride = 9,
 		.input_offset = 19,
-		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone 1 */, 7 /* Headphone 2 */, 10 /* SPDIF */ },
-		.out_gain_labels = { "Monitor", "Headphone 1", "Headphone 2", "ADAT" },
-		.out_bus_map = { 2, 3, 5, 6, 8, 9, 11, 12 },
+		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone 1 */, 7 /* Headphone 2 */, 10 /* SPDIF */, -1, -1 , -1, -1, -1, -1 },
+		.out_gain_labels = { "Monitor", "Headphone 1", "Headphone 2", "ADAT", "", "", "", "", "", "" },
+		.out_bus_map = { 2, 3, 5, 6, 8, 9, 11, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
 		.hiz_map = { 13, 15 },
 		.pad_map = { 14, 16, 17, 18 },
 	},
@@ -117,11 +117,29 @@ static Device devices[] = {
 		.num_pad = 0,
 		.matrix_mix_offset = 33, .matrix_mix_stride = 9, // XXX stride should be 7, bug in kernel-driver ?!
 		.matrix_in_offset = 22, .matrix_in_stride = 9,   // XXX stride should be 7, bug in kernel-driver ?!
-		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone */, 7 /* SPDIF */, -1 },
-		.out_gain_labels = { "Monitor", "Headphone", "ADAT", "" },
-		.out_bus_map = { 2, 3, 5, 6, 8, 9, -1, -1 },
+		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone */, 7 /* SPDIF */, -1, -1, -1 , -1, -1, -1, -1 },
+		.out_gain_labels = { "Monitor", "Headphone", "ADAT", "", "", "", "", "", "", "" },
+		.out_bus_map = { 2, 3, 5, 6, 8, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
 		.input_offset = 16,
 		.hiz_map = { 10, 12 },
+		.pad_map = { -1, -1, -1, -1 },
+	},
+	{
+		.name = "Scarlett 18i20 USB",
+		.smi = 18, .smo = 8,
+		.sin = 18, .sout = 8,
+		.smst = 10,
+		.num_monitor = 1,
+		.num_phones = 0,
+		.num_hiz = 0,
+		.num_pad = 0,
+		.matrix_mix_offset = 50, .matrix_mix_stride = 9,
+		.matrix_in_offset = 49, .matrix_in_stride = 9,
+		.input_offset = 31,
+		.out_gain_map = { 1, 7, 10, 13, 16, 19, 22, 25, 28, 2  },
+		.out_gain_labels = { "Monitor", "Line 3/4", "Line 5/6", "Line 7/8", "Line 9/10" , "SPDIF", "ADAT 1/2", "ADAT 3/4", "ADAT 5/6", "ADAT 7/8" },
+		.out_bus_map = { 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 20, 21, 23, 24, 26, 27, 29, 30, 2, 3 },
+		.hiz_map = { -1, -1 },
 		.pad_map = { -1, -1, -1, -1 },
 	},
 };
@@ -853,8 +871,17 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	ui->out_sel = malloc (ui->device->sout * sizeof (RobTkSelect *));
 	ui->out_gain = malloc (ui->device->smst * sizeof (RobTkDial *));
 
-	ui->btn_hiz = malloc (ui->device->num_hiz * sizeof (RobTkCBtn *));
-	ui->btn_pad = malloc (ui->device->num_pad * sizeof (RobTkCBtn *));
+
+	if (ui->device->num_hiz > 0) {
+		ui->btn_hiz = malloc (ui->device->num_hiz * sizeof (RobTkCBtn *));
+	} else {
+		ui->btn_hiz = NULL;
+	}
+	if  (ui->device->num_pad > 0) {
+		ui->btn_pad = malloc (ui->device->num_pad * sizeof (RobTkCBtn *));
+	} else {
+		ui->btn_pad = NULL;
+	}
 
 	const int c0 = 4; // matrix column offset
 	const int rb = 2 + ui->device->smi; // matrix bottom
