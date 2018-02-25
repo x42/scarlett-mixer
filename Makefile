@@ -33,7 +33,7 @@ scarlett-mixer: $(APP_SRC) $(RW)robtkapp.c $(RW)ui_gl.c $(PUGL_SRC) Makefile
 	$(CC) $(CPPFLAGS) \
 		-o $@ \
 		-DVERSION=\"$(VERSION)\" \
-		$(CFLAGS) $(GLUICFLAGS) \
+		$(CFLAGS) $(GLUICFLAGS) -std=c99 \
 		-DXTERNAL_UI -DHAVE_IDLE_IFACE -DRTK_DESCRIPTOR=lv2ui_descriptor \
 		-DPLUGIN_SOURCE=\"$(APP_SRC)\" \
 		-DAPPTITLE="\"Scarlett Mixer\"" \
