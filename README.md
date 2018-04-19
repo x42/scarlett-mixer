@@ -12,7 +12,7 @@ This is a **quick hack**, it's prepared for other Scarlett devices, but you are 
 Please do not package it as-is, or make it available to end-users since most will be disappointed.
 
 The mixer-elements are numerically indexed and only work with vanilla Linux. Also note
-that the device must be supported by the ALSA Liunux kernel device-driver. At the time of writing
+that the device must be supported by the ALSA Linux kernel device-driver. At the time of writing
 only the 1st generation of Scarlett devices are supported (Linux 4.16, April 2018).
 
 Install
