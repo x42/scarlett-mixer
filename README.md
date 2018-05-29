@@ -1,22 +1,23 @@
 Graphical Mixer Interface for the Scarlett series
 =================================================
 
-Currently supported models:
+Currently supported models, first generation of
 - 18i6
 - 18i8
 - 18i20
 - 6i6 (untested)
 
-This is a **quick hack**, it's prepared for other Scarlett devices, but you are on your own...
+This is just a GUI, the device **must** be supported by the ALSA Linux kernel device-driver.
 
-Please do not package it as-is, or make it available to end-users since most will be disappointed.
+The mixer-elements are numerically indexed and only work with vanilla Linux.
+At the time of writing only the 1st generation of Scarlett devices are supported (Linux 4.16, April 2018).
 
-The mixer-elements are numerically indexed and only work with vanilla Linux. Also note
-that the device must be supported by the ALSA Linux kernel device-driver. At the time of writing
-only the 1st generation of Scarlett devices are supported (Linux 4.16, April 2018).
+This UI a **quick hack**, it may or may not work and is prepared for other Scarlett devices, but **you** **are** **on** **your** **own**.
 
-Install
--------
+Please do **not** package this software as-is, nor make it available to end-users since most will be disappointed.
+
+Setup
+-----
 
 Build-dependencies: gnu-make, a c-compiler, pkg-config, libpango, libcairo,
 lv2 (SDK), alsa (libasound) and openGL (sometimes called: glu, glx, mesa).
@@ -29,8 +30,12 @@ lv2 (SDK), alsa (libasound) and openGL (sometimes called: glu, glx, mesa).
   make
 ```
 
+Usage (run from source-dir)
+---------------------------
+
 ```bash
-  ./scarlett-mixer hw:2
+  ./scarlett-mixer --help
+  ./scarlett-mixer hw:2   # change "hw:2" to match your device
 ```
 
 Screenshot
