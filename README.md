@@ -46,4 +46,4 @@ Screenshot
 See also
 --------
 
-ALSA Mixer in HTLM-5 with ALSA JSON Gateway: http://breizhme.net/alsajson/mixers/ajg#/
+ALSA Mixer in HTLM-5 with ALSA JSON Gateway: https://github.com/fulup-bzh/AlsaJsonGateway
