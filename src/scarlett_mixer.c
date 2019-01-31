@@ -47,7 +47,7 @@
 #define MAX_PADS    4
 
 typedef struct {
-	const char  name[64];
+	char        name[64];
 	unsigned    smi;  //< mixer matrix inputs
 	unsigned    smo;  //< mixer matrix outputs
 	unsigned    sin;  //< inputs (capture select)
@@ -61,7 +61,7 @@ typedef struct {
 	unsigned    matrix_in_stride;
 	unsigned    input_offset;
 	int         out_gain_map[MAX_GAINS];
-	const char  out_gain_labels[MAX_GAINS][16];
+	char        out_gain_labels[MAX_GAINS][16];
 	int         out_bus_map[MAX_BUSSES];
 	int         hiz_map[MAX_HIZS];
 	int         pad_map[MAX_PADS];
@@ -91,14 +91,14 @@ static Device devices[] = {
 		.smst = 4,
 		.num_hiz = 2,
 		.num_pad = 4,
-		.matrix_mix_offset = 38, .matrix_mix_stride = 9,
-		.matrix_in_offset = 37, .matrix_in_stride = 9,
-		.input_offset = 19,
+		.matrix_mix_offset = 40, .matrix_mix_stride = 9, // < Matrix 01 Mix A
+		.matrix_in_offset = 39, .matrix_in_stride = 9,   // Matrix 01 Input, ENUM
+		.input_offset = 21,   // < Input Source 01, ENUM
 		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone 1 */, 7 /* Headphone 2 */, 10 /* SPDIF */, -1, -1 , -1, -1, -1, -1 },
 		.out_gain_labels = { "Monitor", "Headphone 1", "Headphone 2", "SPDIF", "", "", "", "", "", "" },
 		.out_bus_map = { 2, 3, 5, 6, 8, 9, 11, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
-		.hiz_map = { 13, 15 },
-		.pad_map = { 14, 16, 17, 18 },
+		.hiz_map = { 15, 17 }, // < Input 1 Impedance, ENUM,  Input 2 Impedance, ENUM
+		.pad_map = { 16, 18, 19, 20 },
 	},
 	{
 		.name = "Scarlett 6i6 USB",
@@ -392,6 +392,14 @@ static int open_mixer (RobTkApp* ui, const char* card, int probe)
 	}
 
 	ui->ctrl = (Mctrl*)calloc (cnt, sizeof (Mctrl));
+#ifdef AUTODETECT
+	Device d;
+	memset (&d, 0, sizeof (Device));
+	strncpy (d.name, card, 63);
+	d.hiz_map[0] = d.hiz_map[1] = -1;
+	d.pad_map[0] = d.pad_map[1] = d.pad_map[2] = d.pad_map[3] = -1;
+	int obm = 0;
+#endif
 
 	int i = 0;
 	for (elem = snd_mixer_first_elem (ui->mixer); elem; elem = snd_mixer_elem_next (elem)) {
@@ -403,6 +411,64 @@ static int open_mixer (RobTkApp* ui, const char* card, int probe)
 		c->elem = elem;
 		c->name = strdup (snd_mixer_selem_get_name (elem));
 
+#ifdef AUTODETECT
+		if (1) {
+			if (snd_mixer_selem_is_enumerated (elem)) {
+				if (strstr (c->name, " Impedance")) {
+					d.hiz_map[d.num_hiz++] = i;
+				}
+				if (strstr (c->name, " Pad")) {
+					d.pad_map[d.num_pad++] = i;
+				}
+				if (strstr (c->name, "Input Source 01")) {
+					assert (d.input_offset == 0);
+					d.input_offset = i;
+				}
+				if (strstr (c->name, "Input Source")) {
+					++d.sin;
+				}
+				if (strstr (c->name, "Matrix 01 Input")) {
+					assert (d.matrix_in_offset == 0);
+					d.matrix_in_offset = i;
+				}
+				if (strstr (c->name, "Matrix ") && strstr (c->name, " Input")) {
+					++d.smi;
+				}
+				if (strstr (c->name, "Master ")) { // Source enum
+					d.out_bus_map[obm++] = i;
+				}
+			} else if (snd_mixer_selem_has_playback_switch (elem)) {
+				if (strstr (c->name, "Master ")) {
+					char* t1 = strchr (c->name, '(');
+					char* t2 = t1 ? strchr (t1, ')') : NULL;
+					if (t2) {
+						++t1;
+						strncpy (d.out_gain_labels[d.smst], t1, t2 - t1);
+						d.out_gain_labels[d.smst][t2 - t1] = '\0';
+					}
+					d.out_gain_map[d.smst++] = i;
+					d.sout = d.smst * 2;
+				}
+			} else if (snd_mixer_selem_has_capture_switch (elem)) {
+				;
+			} else {
+				if (strstr (c->name, " Matrix 01 Mix A")) {
+					d.matrix_mix_offset = i;
+				}
+				if (strstr (c->name, "Matrix ") && strstr (c->name, " Mix ")) {
+					int last = c->name[strlen (c->name)] - 'A' + 1;
+					assert (last > 0 && last <= 20);
+					if (last > d.smo) {
+						d.smo = last;
+
+						d.matrix_mix_stride = d.smo + 1;
+						d.matrix_in_stride = d.smo + 1;
+					}
+				}
+			}
+		}
+#endif
+
 		if (probe > 0) {
 			printf (" %d %s", i, c->name);
 			if (snd_mixer_selem_is_enumerated (elem)) { printf (", ENUM"); }
@@ -411,7 +477,13 @@ static int open_mixer (RobTkApp* ui, const char* card, int probe)
 			printf ("\n");
 		}
 		++i;
+		assert (i < cnt);
 	}
+#ifdef AUTODETECT
+	if (rv == 0 && ui->device) {
+		memcpy (ui->device, &d, sizeof (Device));
+	}
+#endif
 	return rv;
 }
 
