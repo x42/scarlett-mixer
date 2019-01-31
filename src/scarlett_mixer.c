@@ -1079,7 +1079,7 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 		}
 	}
 
-#if 1
+#if 0
 	/* re-send */
 	ui->btn_reset = robtk_pbtn_new ("R");
 	rob_table_attach (ui->output, robtk_pbtn_widget (ui->btn_reset), 1 + 3 * (ui->device->sout / 2), 2 + 3 * (ui->device->sout / 2), 2, 3, 2, 2, RTK_SHRINK, RTK_SHRINK);
