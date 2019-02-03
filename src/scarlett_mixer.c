@@ -299,6 +299,7 @@ static Mctrl* mst_gain (RobTkApp* ui)
  * *****************************************************************************
  * ****************************************************************************/
 
+static int verbose = 0;
 
 
 /* *****************************************************************************
@@ -1237,6 +1238,48 @@ static void gui_cleanup (RobTkApp* ui) {
 	free (ui->btn_pad);
 }
 
+static char* lookup_device ()
+{
+	char* card = NULL;
+	snd_ctl_card_info_t* info;
+	snd_ctl_card_info_alloca(&info);
+	int number = -1;
+	while (!card) {
+		int err = snd_card_next(&number);
+		if (err < 0 || number < 0) {
+			break;
+		}
+		snd_ctl_t* ctl;
+		char buf[16];
+		sprintf (buf, "hw:%d", number);
+		err = snd_ctl_open(&ctl, buf, 0);
+		if (err < 0) {
+			continue;
+		}
+		err = snd_ctl_card_info(ctl, info);
+		snd_ctl_close(ctl);
+		if (err < 0) {
+			continue;
+		}
+		const char* card_name = snd_ctl_card_info_get_name (info);
+		if (!card_name) {
+			continue;
+		}
+		if (verbose > 1) {
+			printf ("* hw:%d \"%s\"\n", number, card_name);
+		}
+		for (unsigned i = 0; i < NUM_DEVICES; i++) {
+			if (!strcmp (card_name, devices[i].name)) {
+				card = strdup (buf);
+			}
+		}
+	}
+	if (verbose > 0 && NULL != card) {
+		printf ("Autodetect: Using \"%s\"\n", card);
+	}
+	return card;
+}
+
 /* *****************************************************************************
  * options + help
  */
@@ -1254,7 +1297,8 @@ static void usage (int status) {
 A graphical audio-mixer user-interface that exposes the direct raw controls of\n\
 the hardware mixer in the Focusrite(R)-Scarlett(TM) Series of USB soundcards.\n\
 \n\
-The device name needs to be given on the commandline, by default '%s' is used.\n\
+Unless specified on the commandline, the tool uses the first supported device\n\
+falling back to '%s'.\n\
 \n\
 Supported devices:\n\
 ", DEFAULT_DEVICE);
@@ -1333,24 +1377,30 @@ instantiate (
 	}
 
 	if (rtkargv && rtkargv->argc > optind + 1) {
-				usage (EXIT_FAILURE);
+		usage (EXIT_FAILURE);
 	}
 
 	if (rtkargv && rtkargv->argc > optind) {
-		card = rtkargv->argv[optind];
+		card = strdup (rtkargv->argv[optind]);
+	}
+	if (!card) {
+		card = lookup_device ();
+	}
+	if (!card) {
+		card = strdup (DEFAULT_DEVICE);
 	}
 
-	// TODO probe all devices find the first matching DEVICE_NAME
 
 	if (open_mixer (ui, card, probe)) {
 		close_mixer (ui);
 		free (ui);
+		free (card);
 		return 0;
 	}
-
 	ui->disable_signals = true;
 	*widget = toplevel (ui, ui_toplevel);
 	ui->disable_signals = false;
+	free (card);
 	return ui;
 }
 
