@@ -1,6 +1,6 @@
 /* scarlett mixer GUI
  *
- * Copyright 2015-2017 Robin Gareus <robin@gareus.org>
+ * Copyright 2015-2019 Robin Gareus <robin@gareus.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-
 #ifndef DEFAULT_DEVICE
 #define DEFAULT_DEVICE "hw:2"
 #endif
@@ -51,7 +50,7 @@ typedef struct {
 	unsigned    smi;  //< mixer matrix inputs
 	unsigned    smo;  //< mixer matrix outputs
 	unsigned    sin;  //< inputs (capture select)
-	unsigned    sout; //< outputs assigns (=?= smo)
+	unsigned    sout; //< outputs assigns
 	unsigned    smst; //< main outputs (stereo gain controls w/mute =?= sout / 2)
 	unsigned    num_hiz;
 	unsigned    num_pad;
@@ -301,12 +300,43 @@ static Mctrl* mst_gain (RobTkApp* ui)
 
 static int verbose = 0;
 
+#define OPT_PROBE (1<<0)
+#define OPT_DETECT (1<<1)
+
+static void dump_device_desc (Device const* const d)
+{
+	printf ("--- Device: %s\n", d->name);
+	printf ("Matrix: in=%d, out=%d, off=%d, stride=%d\n",
+			d->smi, d->smo, d->matrix_mix_offset, d->matrix_mix_stride);
+	printf ("Matrix: input-select=%d, select-stride=%d\n",
+			d->matrix_in_offset, d->matrix_in_stride);
+	printf ("Inputs: ins=%d select-offset=%d\n",
+			d->sin, d->input_offset);
+	printf ("Masters: n_mst=%d n_out-select=%d\n",
+			d->smst, d->sout);
+	printf ("Switches: n_pad=%d, n_hiz=%d\n",
+			d->num_pad, d->num_hiz);
+
+#define DUMP_ARRAY(name, len, fmt)  \
+  printf (#name " = {");            \
+  for (int i = 0; i < len; ++i) {   \
+    printf (fmt ", ", d->name[i]);  \
+  }                                 \
+  printf ("};\n");
+
+	DUMP_ARRAY (hiz_map, MAX_HIZS, "%d");
+	DUMP_ARRAY (pad_map, MAX_PADS, "%d");
+	DUMP_ARRAY (out_gain_map, MAX_GAINS, "%d");
+	DUMP_ARRAY (out_gain_labels, MAX_GAINS, "%s");
+	DUMP_ARRAY (out_bus_map, MAX_BUSSES, "%d");
+	printf ("---\n");
+}
 
 /* *****************************************************************************
  * Alsa Mixer Interface
  */
 
-static int open_mixer (RobTkApp* ui, const char* card, int probe)
+static int open_mixer (RobTkApp* ui, const char* card, int opts)
 {
 	int rv = 0;
 	int err;
@@ -346,7 +376,7 @@ static int open_mixer (RobTkApp* ui, const char* card, int probe)
 	if (ui->device == NULL) {
 		fprintf (stderr, "Device `%s' is not supported\n", card);
 		rv = -1;
-		if (probe == 0) {
+		if ((opts & OPT_PROBE) == 0) {
 			return -1;
 		}
 	}
@@ -388,19 +418,20 @@ static int open_mixer (RobTkApp* ui, const char* card, int probe)
 		return -1;
 	}
 
-	if (probe) {
+	if (opts & OPT_PROBE) {
 		fprintf (stderr, "Device `%s' has %d contols: \n", card_name, cnt);
 	}
 
 	ui->ctrl = (Mctrl*)calloc (cnt, sizeof (Mctrl));
-#ifdef AUTODETECT
+
 	Device d;
 	memset (&d, 0, sizeof (Device));
-	strncpy (d.name, card, 63);
-	d.hiz_map[0] = d.hiz_map[1] = -1;
-	d.pad_map[0] = d.pad_map[1] = d.pad_map[2] = d.pad_map[3] = -1;
+	strncpy (d.name, card_name, 63);
+	for (int i = 0; i < MAX_GAINS; ++i) { d.out_gain_map[i] = -1; }
+	for (int i = 0; i < MAX_BUSSES; ++i) { d.out_bus_map[i] = -1; }
+	for (int i = 0; i < MAX_HIZS; ++i) { d.hiz_map[i] = -1; }
+	for (int i = 0; i < MAX_PADS; ++i) { d.pad_map[i] = -1; }
 	int obm = 0;
-#endif
 
 	int i = 0;
 	for (elem = snd_mixer_first_elem (ui->mixer); elem; elem = snd_mixer_elem_next (elem)) {
@@ -412,8 +443,7 @@ static int open_mixer (RobTkApp* ui, const char* card, int probe)
 		c->elem = elem;
 		c->name = strdup (snd_mixer_selem_get_name (elem));
 
-#ifdef AUTODETECT
-		if (1) {
+		if (opts & OPT_DETECT) {
 			if (snd_mixer_selem_is_enumerated (elem)) {
 				if (strstr (c->name, " Impedance")) {
 					d.hiz_map[d.num_hiz++] = i;
@@ -453,11 +483,11 @@ static int open_mixer (RobTkApp* ui, const char* card, int probe)
 			} else if (snd_mixer_selem_has_capture_switch (elem)) {
 				;
 			} else {
-				if (strstr (c->name, " Matrix 01 Mix A")) {
+				if (strstr (c->name, "Matrix 01 Mix A")) {
 					d.matrix_mix_offset = i;
 				}
 				if (strstr (c->name, "Matrix ") && strstr (c->name, " Mix ")) {
-					int last = c->name[strlen (c->name)] - 'A' + 1;
+					int last = c->name[strlen (c->name) - 1] - 'A' + 1;
 					assert (last > 0 && last <= 20);
 					if (last > d.smo) {
 						d.smo = last;
@@ -468,23 +498,31 @@ static int open_mixer (RobTkApp* ui, const char* card, int probe)
 				}
 			}
 		}
-#endif
 
-		if (probe > 0) {
-			printf (" %d %s", i, c->name);
+		if (opts & OPT_PROBE) {
+			printf (" %d '%s'", i, c->name);
 			if (snd_mixer_selem_is_enumerated (elem)) { printf (", ENUM"); }
 			if (snd_mixer_selem_has_playback_switch (elem)) { printf (", PBS"); }
 			if (snd_mixer_selem_has_capture_switch (elem)) { printf (", CPS"); }
 			printf ("\n");
 		}
 		++i;
-		assert (i < cnt);
+		assert (i <= cnt);
 	}
-#ifdef AUTODETECT
-	if (rv == 0 && ui->device) {
-		memcpy (ui->device, &d, sizeof (Device));
+
+	if ((opts & OPT_DETECT) && rv == 0 && ui->device) {
+		if (verbose > 1) {
+			printf ("CMP %d\n", memcmp (ui->device, &d, sizeof (Device)));
+			dump_device_desc (&d);
+			dump_device_desc (ui->device);
+		}
+		if (d.smi != 0 && d.smo != 0 && d.sin != 0 && d.sout != 0 && d.smst != 0 && d.input_offset != 0 && d.matrix_in_offset != 0 && d.matrix_mix_offset != 0) {
+			if (verbose) {
+				printf ("Using autodetected mapping.\n");
+			}
+			memcpy (ui->device, &d, sizeof (Device));
+		}
 	}
-#endif
 	return rv;
 }
 
@@ -1287,8 +1325,10 @@ static char* lookup_device ()
 static struct option const long_options[] =
 {
 	{"help", no_argument, 0, 'h'},
+	{"preset-only", no_argument, 0, 'P'},
 	{"print-controls", no_argument, 0, 'p'},
 	{"version", no_argument, 0, 'V'},
+	{"verbose", no_argument, 0, 'v'},
 	{NULL, 0, NULL, 0}
 };
 
@@ -1311,7 +1351,9 @@ Supported devices:\n\
 	printf ("Options:\n\
   -h, --help                 display this help and exit\n\
   -p, --print-controls       list control parameters of given soundcard\n\
+  -P, --preset-only          do not parse names from kernel-driver\n\
   -V, --version              print version information and exit\n\
+  -v, --verbose              print information (may be specifified twice)\n\
 \n\n\
 Examples:\n\
 scarlett-mixer hw:1\n\
@@ -1342,7 +1384,7 @@ instantiate (
 		const LV2_Feature* const* features)
 {
 	RobTkApp* ui = (RobTkApp*) calloc (1,sizeof (RobTkApp));
-	char const* card = DEFAULT_DEVICE;
+	char* card = NULL;
 
 	struct _rtkargv { int argc; char **argv; };
 	struct _rtkargv* rtkargv = NULL;
@@ -1353,24 +1395,31 @@ instantiate (
 		}
 	}
 
-	int probe = 0;
+	int opts = OPT_DETECT;
 	int c;
 	while (rtkargv && (c = getopt_long (rtkargv->argc, rtkargv->argv,
-			   "h"	/* help */
-			   "p"	/* print-controls */
-			   "V",	/* version */
+			   "h"  /* help */
+			   "P"  /* Preset-Only */
+			   "p"  /* print-controls */
+			   "V"  /* version */
+			   "v", /* verbose */
 			   long_options, (int *) 0)) != EOF) {
 		switch (c) {
-			case 'V':
-				printf ("scarlet-mixer version %s\n\n", VERSION);
-				printf ("Copyright (C) GPL 2017 Robin Gareus <robin@gareus.org>\n");
-				exit (0);
-			case 'p':
-				probe = 1;
-				break;
 			case 'h':
 				usage (0);
-
+			case 'V':
+				printf ("scarlet-mixer version %s\n\n", VERSION);
+				printf ("Copyright (C) GPL 2019 Robin Gareus <robin@gareus.org>\n");
+				exit (0);
+			case 'v':
+				++verbose;
+				break;
+			case 'P':
+				opts &= ~OPT_DETECT;
+				break;
+			case 'p':
+				opts |= OPT_PROBE;
+				break;
 			default:
 				usage (EXIT_FAILURE);
 		}
@@ -1390,8 +1439,7 @@ instantiate (
 		card = strdup (DEFAULT_DEVICE);
 	}
 
-
-	if (open_mixer (ui, card, probe)) {
+	if (open_mixer (ui, card, opts)) {
 		close_mixer (ui);
 		free (ui);
 		free (card);
