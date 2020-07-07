@@ -7,10 +7,13 @@ Currently supported models, first generation of
 - 18i20
 - 6i6 (untested)
 
+third generation of
+- 8i6
+
 This is just a GUI, the device **must** be supported by the ALSA Linux kernel device-driver.
 
 The mixer-elements are numerically indexed and only work with vanilla Linux.
-At the time of writing only the 1st generation of Scarlett devices are supported (Linux 4.16, April 2018).
+All 1st generation of Scarlett devices are supported (Linux 4.16, April 2018), 3rd generation 8i6 devices are supported and some other 2nd and 3rd generation devices may happen to work.
 
 This UI a **quick hack**, it may or may not work and is prepared for other Scarlett devices, but **you** **are** **on** **your** **own**.
 
