@@ -523,9 +523,17 @@ static int open_mixer (RobTkApp* ui, const char* card, int opts)
 				}
 				if ((strstr (c->name, "Matrix ") || (strstr (c->name, "Mixer "))) && strstr (c->name, " Input")) {
 					++d.smi;
+					if (strstr(c->name, "Mixer ") && (d.smi == 2))
+						d.matrix_in_stride = i - d.matrix_in_offset;
 				}
 				if (strstr (c->name, "Master ") || strstr (c->name, " Output")) { // Source enum
+					char* t1 = strstr(c->name, " Output");
 					d.out_bus_map[obm++] = i;
+					if (t1 && (obm > d.samo + d.smst)) {
+						strncpy (d.out_gain_labels[obm - 1], c->name, t1 - c->name);
+						d.out_gain_labels[obm - 1][c->name - t1] = '\0';
+						d.sout++;
+					}
 				}
 			} else if (snd_mixer_selem_has_playback_switch (elem)) {
 				if (strstr (c->name, "Master ")) {
@@ -552,8 +560,22 @@ static int open_mixer (RobTkApp* ui, const char* card, int opts)
 			} else if (snd_mixer_selem_has_capture_switch (elem)) {
 				if (strstr (c->name, " Pad")) {
 					d.pad_map[d.num_pad++] = i;
+					d.pads_are_switches = true;
+				} else if (strstr (c->name, " Air")) {
+					d.air_map[d.num_air++] = i;
 				}
 			} else {
+				if (strstr (c->name, "Line 0") || strstr (c->name, "Line 1")) {
+					char* t1 = c->name + 9;
+					char* t2 = strchr (t1 + 1, ')');
+					if (t2) {
+						strncpy (d.out_gain_labels[d.smst + d.samo], t1, t2 - t1);
+						d.out_gain_labels[d.smst + d.samo][t2 - t1 + 1] = '\0';
+					}
+					d.out_gain_map[d.smst + d.samo++] = i;
+					d.sout++;
+				}
+
 				if (strstr (c->name, "Matrix 01 Mix A") || strstr (c->name, "Mix A Input 01")) {
 					d.matrix_mix_offset = i;
 				}
@@ -573,9 +595,10 @@ static int open_mixer (RobTkApp* ui, const char* card, int opts)
 					if (last > d.smo) {
 						d.smo = last;
 
-						d.matrix_mix_stride = d.smo + 1;
+						d.matrix_mix_stride = d.smo;
 						d.matrix_in_stride = d.smo + 1;
 					}
+					d.matrix_mix_column_major = true;
 				}
 			}
 		}
@@ -597,11 +620,16 @@ static int open_mixer (RobTkApp* ui, const char* card, int opts)
 			dump_device_desc (&d);
 			dump_device_desc (ui->device);
 		}
-		if (d.smi != 0 && d.smo != 0 && d.sin != 0 && d.sout != 0 && d.smst != 0 && d.input_offset != 0 && d.matrix_in_offset != 0 && d.matrix_mix_offset != 0) {
-			if (verbose) {
-				printf ("Using autodetected mapping.\n");
-			}
+	}
+	if ((opts & OPT_DETECT) && (d.smi != 0 && d.smo != 0 && d.sin != 0 && d.sout != 0 && (d.smst != 0 || d.samo != 0) && d.matrix_in_offset != 0 && d.matrix_mix_offset != 0)) {
+		if (verbose) {
+			printf ("Using autodetected mapping.\n");
+		}
+		if (NULL == ui->device)
+			ui->device = malloc(sizeof(Device));
+		if (NULL != ui->device) {
 			memcpy (ui->device, &d, sizeof (Device));
+			rv = 0;
 		}
 	}
 	return rv;
