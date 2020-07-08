@@ -92,7 +92,7 @@ static Device devices[] = {
 		.num_pad = 4,
 		.matrix_mix_offset = 40, .matrix_mix_stride = 9, // < Matrix 01 Mix A
 		.matrix_in_offset = 39, .matrix_in_stride = 9,   // Matrix 01 Input, ENUM
-		.input_offset = 21,   // < Input Source 01, ENUM
+		.input_offset = 20,   // < Input Source 01, ENUM
 		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone 1 */, 7 /* Headphone 2 */, 10 /* SPDIF */, -1, -1 , -1, -1, -1, -1 },
 		.out_gain_labels = { "Monitor", "Headphone 1", "Headphone 2", "SPDIF", "", "", "", "", "", "" },
 		.out_bus_map = { 2, 3, 5, 6, 8, 9, 11, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
