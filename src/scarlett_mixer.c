@@ -540,8 +540,9 @@ static int open_mixer (RobTkApp* ui, const char* card, int opts)
 				}
 				if ((strstr (c->name, "Matrix ") || (strstr (c->name, "Mixer "))) && strstr (c->name, " Input")) {
 					++d.smi;
-					if (strstr(c->name, "Mixer ") && (d.smi == 2))
+					if (strstr(c->name, "Mixer ") && (d.smi == 2)) {
 						d.matrix_in_stride = i - d.matrix_in_offset;
+					}
 				}
 				if (strstr (c->name, "Master ") || strstr (c->name, " Output")) { // Source enum
 					char* t1 = strstr(c->name, " Output");
@@ -605,8 +606,7 @@ static int open_mixer (RobTkApp* ui, const char* card, int opts)
 						d.matrix_mix_stride = d.smo + 1;
 						d.matrix_in_stride = d.smo + 1;
 					}
-				} else
-				if (strstr (c->name, "Mix ") && strstr (c->name, " Input ")) {
+				} else if (strstr (c->name, "Mix ") && strstr (c->name, " Input ")) {
 					int last = c->name[4] - 'A' + 1;
 					assert (last > 0 && last <= 20);
 					if (last > d.smo) {
@@ -638,7 +638,15 @@ static int open_mixer (RobTkApp* ui, const char* card, int opts)
 			dump_device_desc (ui->device);
 		}
 	}
-	if ((opts & OPT_DETECT) && (d.smi != 0 && d.smo != 0 && d.sin != 0 && d.sout != 0 && (d.smst != 0 || d.samo != 0) && d.matrix_in_offset != 0 && d.matrix_mix_offset != 0)) {
+	if ((opts & OPT_DETECT)
+	    /* test is all relevant offsets have been detected */
+	    && (   d.smi != 0 && d.smo != 0
+	        && d.sin != 0 && d.sout != 0
+	        && d.matrix_in_offset != 0 && d.matrix_mix_offset != 0
+	        && (d.smst != 0 || d.samo != 0)
+	       )
+	   )
+	{
 		if (verbose) {
 			printf ("Using autodetected mapping.\n");
 		}
@@ -1285,9 +1293,8 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 
 	/* master level */
 	if (ui->device->smst) {
-	ui->out_mst = robtk_lbl_new ("Master");
-	rob_table_attach (ui->output, robtk_lbl_widget (ui->out_mst), 0, 2, 0, 1, 2, 2, RTK_SHRINK, RTK_SHRINK);
-	{
+		ui->out_mst = robtk_lbl_new ("Master");
+		rob_table_attach (ui->output, robtk_lbl_widget (ui->out_mst), 0, 2, 0, 1, 2, 2, RTK_SHRINK, RTK_SHRINK);
 		Mctrl* ctrl = mst_gain (ui);
 		ui->mst_gain = robtk_dial_new_with_size (
 				0, 1, 1.f / 80.f,
@@ -1304,7 +1311,6 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 		robtk_dial_set_callback (ui->mst_gain, cb_mst_gain, ui);
 		robtk_dial_annotation_callback (ui->mst_gain, dial_annotation_db, ui);
 		rob_table_attach (ui->output, robtk_dial_widget (ui->mst_gain), 0, 2, 1, 3, 2, 0, RTK_SHRINK, RTK_SHRINK);
-	}
 	}
 
 	/* output level + labels */
@@ -1383,10 +1389,11 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	/* Pads */
 	for (unsigned int i = 0; i < ui->device->num_pad; ++i) {
 		ui->btn_pad[i] = robtk_cbtn_new ("Pad", GBT_LED_LEFT, false);
-		if (ui->device->pads_are_switches)
+		if (ui->device->pads_are_switches) {
 			robtk_cbtn_set_active (ui->btn_pad[i], get_switch (pad (ui, i)) == 1);
-		else
+		} else {
 			robtk_cbtn_set_active (ui->btn_pad[i], get_enum (pad (ui, i)) == 1);
+		}
 		robtk_cbtn_set_callback (ui->btn_pad[i], cb_set_pad, ui);
 		rob_table_attach (ui->output, robtk_cbtn_widget (ui->btn_pad[i]),
 				i, i + 1, 4, 5, 0, 0, RTK_SHRINK, RTK_SHRINK);
