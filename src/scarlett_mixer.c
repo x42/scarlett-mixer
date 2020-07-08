@@ -247,10 +247,11 @@ static Mctrl* matrix_ctrl_cr (RobTkApp* ui, unsigned int c, unsigned int r)
 	if (r >= ui->device->smi || c >= ui->device->smo) {
 		return NULL;
 	}
-	if (ui->device->matrix_mix_column_major)
+	if (ui->device->matrix_mix_column_major) {
 		ctrl_id = ui->device->matrix_mix_offset + c * ui->device->matrix_mix_stride + r;
-	else
+	} else {
 		ctrl_id = ui->device->matrix_mix_offset + r * ui->device->matrix_mix_stride + c;
+	}
 	return &ui->ctrl[ctrl_id];
 }
 
