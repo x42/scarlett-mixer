@@ -58,10 +58,10 @@ typedef struct {
 	unsigned    num_hiz;
 	unsigned    num_pad;
 	unsigned    num_air;
-	bool	    pads_are_switches;
+	bool        pads_are_switches;
+	bool        matrix_mix_column_major;
 	unsigned    matrix_mix_offset;
 	unsigned    matrix_mix_stride;
-	bool	    matrix_mix_column_major;
 	unsigned    matrix_in_offset;
 	unsigned    matrix_in_stride;
 	unsigned    input_offset;
@@ -79,8 +79,12 @@ static Device devices[] = {
 		.smi = 18, .smo = 6,
 		.sin = 18, .sout = 6,
 		.smst = 3,
+		.samo = 0,
 		.num_hiz = 2,
 		.num_pad = 0,
+		.num_air = 0,
+		.pads_are_switches = false,
+		.matrix_mix_column_major = false,
 		.matrix_mix_offset = 33, .matrix_mix_stride = 7,
 		.matrix_in_offset = 32, .matrix_in_stride = 7,
 		.input_offset = 14,
@@ -95,8 +99,12 @@ static Device devices[] = {
 		.smi = 18, .smo = 8,
 		.sin = 18, .sout = 8,
 		.smst = 4,
+		.samo = 0,
 		.num_hiz = 2,
 		.num_pad = 4,
+		.num_air = 0,
+		.pads_are_switches = false,
+		.matrix_mix_column_major = false,
 		.matrix_mix_offset = 40, .matrix_mix_stride = 9, // < Matrix 01 Mix A
 		.matrix_in_offset = 39, .matrix_in_stride = 9,   // Matrix 01 Input, ENUM
 		.input_offset = 20,   // < Input Source 01, ENUM
@@ -111,8 +119,12 @@ static Device devices[] = {
 		.smi = 6, .smo = 6,
 		.sin = 6, .sout = 6,
 		.smst = 3,
+		.samo = 0,
 		.num_hiz = 2,
 		.num_pad = 4, // XXX does the device have pad? bug in kernel-driver?
+		.num_air = 0,
+		.pads_are_switches = false,
+		.matrix_mix_column_major = false,
 		.matrix_mix_offset = 26, .matrix_mix_stride = 9, // XXX stride should be 7, bug in kernel-driver ?!
 		.matrix_in_offset = 25, .matrix_in_stride = 9,   // XXX stride should be 7, bug in kernel-driver ?!
 		.out_gain_map = { 1 /* Monitor */, 4 /* Headphone */, 7 /* SPDIF */, -1, -1, -1 , -1, -1, -1, -1 },
@@ -127,8 +139,12 @@ static Device devices[] = {
 		.smi = 18, .smo = 8,
 		.sin = 18, .sout = 20,
 		.smst = 10,
+		.samo = 0,
 		.num_hiz = 0,
 		.num_pad = 0,
+		.num_air = 0,
+		.pads_are_switches = false,
+		.matrix_mix_column_major = false,
 		.matrix_mix_offset = 50, .matrix_mix_stride = 9,
 		.matrix_in_offset = 49, .matrix_in_stride = 9,
 		.input_offset = 31,
@@ -148,9 +164,9 @@ static Device devices[] = {
 		.num_pad = 2, 
 		.num_air = 2, 
 		.pads_are_switches = true,
+		.matrix_mix_column_major = true,
 		.matrix_mix_offset = 20, .matrix_mix_stride = 8,
 		.matrix_in_offset = 84, .matrix_in_stride = 1,
-		.matrix_mix_column_major = true,
 		.out_gain_map = { 10 /* Headphone 1 */, 11, 12 /* Headphone 2 */, 13, -1, -1 , -1, -1, -1, -1 },
 		.out_gain_labels = { "Headphone 1L", "Headphone 1R", "Headphone 2L", "Headphone 2R", "SPDIF/L", "SPDIF/R", "", "", "", "" },
 		.out_bus_map = { 92, 93, 94, 95, 97, 98, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
