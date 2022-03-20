@@ -26,7 +26,7 @@ Build-dependencies: gnu-make, a c-compiler, pkg-config, libpango, libcairo,
 lv2 (SDK), alsa (libasound) and openGL (sometimes called: glu, glx, mesa).
 
 ```bash
-  git clone git://github.com/x42/scarlett-mixer
+  git clone https://github.com/x42/scarlett-mixer
   cd scarlett-mixer
   git submodule init
   git submodule update
