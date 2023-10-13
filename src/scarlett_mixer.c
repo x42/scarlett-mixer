@@ -611,9 +611,6 @@ static int open_mixer (RobTkApp* ui, const char* card, int opts)
 					assert (last > 0 && last <= 20);
 					if (last > d.smo) {
 						d.smo = last;
-
-						d.matrix_mix_stride = d.smo;
-						d.matrix_in_stride = d.smo + 1;
 					}
 					d.matrix_mix_column_major = true;
 				}
@@ -629,6 +626,10 @@ static int open_mixer (RobTkApp* ui, const char* card, int opts)
 		}
 		++i;
 		assert (i <= cnt);
+	}
+
+	if ((opts & OPT_DETECT) && d.matrix_mix_column_major) {
+		d.matrix_mix_stride = d.smi;
 	}
 
 	if ((opts & OPT_DETECT) && rv == 0 && ui->device) {
@@ -1180,7 +1181,7 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 
 	/* table layout. NB: these are min sizes, table grows if needed */
 	ui->matrix = rob_table_new (/*rows*/rb, /*cols*/ 5 + ui->device->smo, FALSE);
-	ui->output = rob_table_new (/*rows*/4,  /*cols*/ 2 + 3 * ui->device->smst, FALSE);
+	ui->output = rob_table_new (/*rows*/6,  /*cols*/ 2 + 3 * (ui->device->smst + ui->device->samo), FALSE);
 
 	/* headings */
 	ui->heading[0]  = robtk_lbl_new ("Capture");
@@ -1315,8 +1316,8 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 
 	/* output level + labels */
 	for (unsigned int o = 0; o < ui->device->smst; ++o) {
-		int row = 4 * floor (o / 5); // beware of bleed into Hi-Z, Pads
-		int oc = o % 5;
+		int row = 0; // beware of bleed into Hi-Z, Pads
+		int oc = o;
 
 		ui->out_lbl[o]  = robtk_lbl_new (out_gain_label (ui, o));
 		rob_table_attach (ui->output, robtk_lbl_widget (ui->out_lbl[o]), 3 * oc + 2, 3 * oc + 5, row, row + 1, 2, 2, RTK_SHRINK, RTK_SHRINK);
@@ -1343,8 +1344,8 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 
 	/* aux mono outputs & labels */
 	for (unsigned int o = 0; o < ui->device->samo; ++o) {
-		int row = 4 * floor (o / 5); // beware of bleed into Hi-Z, Pads
-		int oc = o % 5;
+		int row = 0; // beware of bleed into Hi-Z, Pads
+		int oc = o;
 
 		ui->aux_lbl[o]  = robtk_lbl_new (aux_gain_label (ui, o));
 		rob_table_attach (ui->output, robtk_lbl_widget (ui->aux_lbl[o]), 3 * oc + 2, 3 * oc + 5, row, row + 1, 2, 2, RTK_SHRINK, RTK_SHRINK);
@@ -1369,9 +1370,9 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	}
 
 	for (unsigned int o = 0; o < ui->device->sout - ui->device->samo - (ui->device->smst * 2); ++o) {
-		int row_base = (o + ui->device->samo + (ui->device->smst * 2));
-		int row = 4 * floor (row_base / 6); // beware of bleed into Hi-Z, Pads
-		int oc = row_base % 6;
+
+		int row = 0; // beware of bleed into Hi-Z, Pads
+		int oc = o + ui->device->samo;
 
 		ui->sel_lbl[o]  = robtk_lbl_new (out_select_label (ui, o));
 		rob_table_attach (ui->output, robtk_lbl_widget (ui->sel_lbl[o]), 3 * oc + 2, 3 * oc + 5, row, row + 1, 2, 2, RTK_SHRINK, RTK_SHRINK);
@@ -1410,9 +1411,8 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 
 	/* output selectors */
 	for (unsigned int o = 0; o < ui->device->sout; ++o) {
-		int row = 4 * floor (o / 10); // beware of bleed into Hi-Z, Pads
+		int row = 0; // beware of bleed into Hi-Z, Pads
 		int pc = 3 * (o / 2); /* stereo-pair column */
-		pc %= 15;
 
 		ui->out_sel[o] = robtk_select_new ();
 		Mctrl* sctrl = out_sel (ui, o);

@@ -3,3 +3,6 @@ scarlett-mixer
 *.swp
 cscope.*
 tags
+src/.ccls-cache
+.ccls-cache
+.ccls
