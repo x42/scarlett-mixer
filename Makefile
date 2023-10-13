@@ -6,21 +6,27 @@ mandir = $(PREFIX)/share/man/man1
 
 CFLAGS  ?= -g -Wall -Wno-unused-function
 
+PKG_CONFIG ?= pkg-config
+
 VERSION ?= $(shell (git describe --tags HEAD 2>/dev/null || echo "v0.1") | sed 's/-g.*$$//;s/^v//')
 RW      ?= robtk/
 
 APP_SRC  = src/scarlett_mixer.c
 PUGL_SRC = $(RW)pugl/pugl_x11.c
 
-ifeq ($(shell pkg-config --exists cairo pangocairo pango glu gl alsa || echo no), no)
+ifeq ($(shell $(PKG_CONFIG) --exists cairo pangocairo pango glu gl alsa || echo no), no)
   $(error "build dependencies are not satisfied")
 endif
 
+ifeq ($(shell $(PKG_CONFIG) --atleast-version=1.18.6 lv2 && echo yes), yes)
+  override CFLAGS += -DHAVE_LV2_1_18_6
+endif
+
 GLUICFLAGS=-I. -I$(RW)
-GLUICFLAGS+=`pkg-config --cflags cairo pango lv2 glu alsa` -pthread
+GLUICFLAGS+=`$(PKG_CONFIG) --cflags cairo pango lv2 glu alsa` -pthread
 GLUICFLAGS+=-DDEFAULT_NOT_ONTOP
 
-LOADLIBES=`pkg-config --libs $(PKG_UI_FLAGS) cairo pangocairo pango glu gl alsa` -lX11 -lm
+LOADLIBES=`$(PKG_CONFIG) --libs $(PKG_UI_FLAGS) cairo pangocairo pango glu gl alsa` -lX11 -lm
 
 ###############################################################################
 all: scarlett-mixer
