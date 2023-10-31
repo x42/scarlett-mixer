@@ -1144,7 +1144,7 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	ui->font = pango_font_description_from_string ("Mono 9px");
 
 	/* device dependent construction */
-	ui->mtx_sel = malloc (ui->device->sin * sizeof (RobTkSelect *));
+	ui->mtx_sel = malloc (ui->device->smi * sizeof (RobTkSelect *));
 	ui->mtx_gain = malloc (ui->device->smi * ui->device->smo * sizeof (RobTkDial *));
 	ui->mtx_lbl = malloc (ui->device->smo * sizeof (RobTkLbl *));
 
@@ -1156,7 +1156,7 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	ui->out_gain = malloc (ui->device->smst * sizeof (RobTkDial *));
 	ui->aux_lbl = malloc (ui->device->samo * sizeof (RobTkLbl *));
 	ui->aux_gain = malloc (ui->device->samo * sizeof (RobTkDial *));
-	ui->sel_lbl = malloc (ui->device->sout - ui->device->samo - (ui->device->smst * 2) * sizeof (RobTkLbl *));
+	ui->sel_lbl = malloc ((ui->device->sout - ui->device->samo - (ui->device->smst * 2)) * sizeof (RobTkLbl *));
 
 
 	if (ui->device->num_hiz > 0) {
