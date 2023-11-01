@@ -45,6 +45,7 @@
 #define MAX_HIZS    2
 #define MAX_PADS    4
 #define MAX_AIRS    2
+#define MAX_PHANTOM_POWERS    1
 
 typedef struct {
 	char        name[64];
@@ -58,6 +59,7 @@ typedef struct {
 	unsigned    num_hiz;
 	unsigned    num_pad;
 	unsigned    num_air;
+    unsigned    num_phantom_power;
 	bool        pads_are_switches;
 	bool        matrix_mix_column_major;
 	unsigned    matrix_mix_offset;
@@ -71,6 +73,7 @@ typedef struct {
 	int         hiz_map[MAX_HIZS];
 	int         pad_map[MAX_PADS];
 	int         air_map[MAX_AIRS];
+	int         phantom_power_map[MAX_PHANTOM_POWERS];
 } Device;
 
 static Device devices[] = {
@@ -83,6 +86,7 @@ static Device devices[] = {
 		.num_hiz = 2,
 		.num_pad = 0,
 		.num_air = 0,
+		.num_phantom_power = 0,
 		.pads_are_switches = false,
 		.matrix_mix_column_major = false,
 		.matrix_mix_offset = 33, .matrix_mix_stride = 7,
@@ -103,6 +107,7 @@ static Device devices[] = {
 		.num_hiz = 2,
 		.num_pad = 4,
 		.num_air = 0,
+		.num_phantom_power = 0,
 		.pads_are_switches = false,
 		.matrix_mix_column_major = false,
 		.matrix_mix_offset = 40, .matrix_mix_stride = 9, // < Matrix 01 Mix A
@@ -123,6 +128,7 @@ static Device devices[] = {
 		.num_hiz = 2,
 		.num_pad = 4, // XXX does the device have pad? bug in kernel-driver?
 		.num_air = 0,
+		.num_phantom_power = 0,
 		.pads_are_switches = false,
 		.matrix_mix_column_major = false,
 		.matrix_mix_offset = 26, .matrix_mix_stride = 9, // XXX stride should be 7, bug in kernel-driver ?!
@@ -143,6 +149,7 @@ static Device devices[] = {
 		.num_hiz = 0,
 		.num_pad = 0,
 		.num_air = 0,
+		.num_phantom_power = 0,
 		.pads_are_switches = false,
 		.matrix_mix_column_major = false,
 		.matrix_mix_offset = 50, .matrix_mix_stride = 9,
@@ -161,8 +168,9 @@ static Device devices[] = {
 		.smst = 0,
 		.samo = 4,
 		.num_hiz = 2,
-		.num_pad = 2, 
-		.num_air = 2, 
+		.num_pad = 2,
+		.num_air = 2,
+		.num_phantom_power = 0,
 		.pads_are_switches = true,
 		.matrix_mix_column_major = true,
 		.matrix_mix_offset = 20, .matrix_mix_stride = 8,
@@ -174,6 +182,29 @@ static Device devices[] = {
 		.hiz_map = { 15, 18 },
 		.pad_map = { 16, 19, -1, -1 },
 		.air_map = { 14, 17 },
+	},
+	{
+		.name = "Scarlett 4i4 USB",
+		.smi = 8, .smo = 6,
+		.sin = 6, .sout = 4,
+		.smst = 0,
+		.samo = 4,
+		.num_hiz = 2,
+		.num_pad = 2,
+		.num_air = 2,
+		.num_phantom_power = 1,
+		.pads_are_switches = true,
+		.matrix_mix_column_major = true,
+		.matrix_mix_offset = 21, .matrix_mix_stride = 8,
+		.matrix_in_offset = 69, .matrix_in_stride = 1,
+		.out_gain_map = { 6 /* Monitor */, 8, 10 /* Headphones */, 12, -1, -1 , -1, -1, -1, -1 },
+		.out_gain_labels = { "Monitor L", "Monitor R", "Headphones L", "Headphones R", "", "", "", "", "", "" },
+		.out_bus_map = { 77, 78, 79, 80, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
+		.input_offset = 0,
+		.hiz_map = { 15, 19 },
+		.pad_map = { 16, 20, -1, -1 },
+		.air_map = { 14, 18 },
+		.phantom_power_map = { 17 },
 	},
 };
 
@@ -211,6 +242,7 @@ typedef struct {
 	RobTkCBtn**     btn_hiz;
 	RobTkCBtn**     btn_pad;
 	RobTkCBtn**     btn_air;
+	RobTkCBtn**     btn_phantom_power;
 	RobTkPBtn*      btn_reset;
 
 	RobTkLbl*       heading[3];
@@ -357,6 +389,13 @@ static Mctrl* air (RobTkApp *ui, unsigned c)
 {
 	assert (c < ui->device->num_air);
 	return &ui->ctrl[ui->device->air_map[c]];
+}
+
+/* Phantom power switches */
+static Mctrl* phantom_power (RobTkApp *ui, unsigned c)
+{
+	assert (c < ui->device->num_phantom_power);
+	return &ui->ctrl[ui->device->phantom_power_map[c]];
 }
 
 /* master gain */
@@ -581,6 +620,8 @@ static int open_mixer (RobTkApp* ui, const char* card, int opts)
 					d.pads_are_switches = true;
 				} else if (strstr (c->name, " Air")) {
 					d.air_map[d.num_air++] = i;
+				} else if (strstr (c->name, " Phantom Power")) {
+					d.phantom_power_map[d.num_phantom_power++] = i;
 				}
 			} else {
 				if (strstr (c->name, "Line 0") || strstr (c->name, "Line 1")) {
@@ -871,6 +912,15 @@ static bool cb_set_air (RobWidget* w, void* handle) {
 	if (ui->disable_signals) return TRUE;
 	for (uint32_t i = 0; i < ui->device->num_air; ++i) {
 		set_switch (air (ui, i), robtk_cbtn_get_active (ui->btn_air[i]));
+	}
+	return TRUE;
+}
+
+static bool cb_set_phantom_power (RobWidget* w, void* handle) {
+	RobTkApp* ui = (RobTkApp*)handle;
+	if (ui->disable_signals) return TRUE;
+	for (uint32_t i = 0; i < ui->device->num_phantom_power; ++i) {
+		set_switch (phantom_power (ui, i), robtk_cbtn_get_active (ui->btn_phantom_power[i]));
 	}
 	return TRUE;
 }
@@ -1174,6 +1224,11 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 	} else {
 		ui->btn_air = NULL;
 	}
+	if  (ui->device->num_phantom_power > 0) {
+		ui->btn_phantom_power = malloc (ui->device->num_phantom_power * sizeof (RobTkCBtn *));
+	} else {
+		ui->btn_phantom_power = NULL;
+	}
 
 	const int c0 = 4; // matrix column offset
 	const int rb = 2 + ui->device->smi; // matrix bottom
@@ -1408,6 +1463,15 @@ static RobWidget* toplevel (RobTkApp* ui, void* const top) {
 				i, i + 1, 5, 6, 0, 0, RTK_SHRINK, RTK_SHRINK);
 	}
 
+	/* Phantom Power */
+	for (unsigned int i = 0; i < ui->device->num_phantom_power; ++i) {
+		ui->btn_phantom_power[i] = robtk_cbtn_new ("Phantom", GBT_LED_LEFT, false);
+			robtk_cbtn_set_active (ui->btn_phantom_power[i], get_switch (phantom_power (ui, i)) == 1);
+		robtk_cbtn_set_callback (ui->btn_phantom_power[i], cb_set_phantom_power, ui);
+		rob_table_attach (ui->output, robtk_cbtn_widget (ui->btn_phantom_power[i]),
+				i, i + 1, 6, 7, 0, 0, RTK_SHRINK, RTK_SHRINK);
+	}
+
 	/* output selectors */
 	for (unsigned int o = 0; o < ui->device->sout; ++o) {
 		int row = 4 * floor (o / 10); // beware of bleed into Hi-Z, Pads
@@ -1504,6 +1568,10 @@ static void gui_cleanup (RobTkApp* ui) {
 		robtk_cbtn_destroy (ui->btn_air[i]);
 	}
 
+	for (int i = 0; i < ui->device->num_phantom_power; i++) {
+		robtk_cbtn_destroy (ui->btn_phantom_power[i]);
+	}
+
 	robtk_sep_destroy (ui->sep_v);
 	robtk_sep_destroy (ui->sep_h);
 	robtk_sep_destroy (ui->spc_v[0]);
@@ -1533,6 +1601,7 @@ static void gui_cleanup (RobTkApp* ui) {
 	free (ui->btn_hiz);
 	free (ui->btn_pad);
 	free (ui->btn_air);
+	free (ui->btn_phantom_power);
 }
 
 static char* lookup_device ()
