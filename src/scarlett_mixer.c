@@ -175,6 +175,27 @@ static Device devices[] = {
 		.pad_map = { 16, 19, -1, -1 },
 		.air_map = { 14, 17 },
 	},
+	{
+		.name = "Scarlett 4i4 USB",
+		.smi = 8, .smo = 6,
+		.sin = 6, .sout = 4,
+		.smst = 0,
+		.samo = 4,
+		.num_hiz = 2,
+		.num_pad = 2,
+		.num_air = 2,
+		.pads_are_switches = true,
+		.matrix_mix_column_major = true,
+		.matrix_mix_offset = 21, .matrix_mix_stride = 8,
+		.matrix_in_offset = 69, .matrix_in_stride = 1,
+		.out_gain_map = { 6 /* Monitor */, 8, 10 /* Headphones */, 12, -1, -1 , -1, -1, -1, -1 },
+		.out_gain_labels = { "Monitor L", "Monitor R", "Headphones L", "Headphones R", "", "", "", "", "", "" },
+		.out_bus_map = { 77, 78, 79, 80, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
+		.input_offset = 0,
+		.hiz_map = { 15, 19 },
+		.pad_map = { 16, 20, -1, -1 },
+		.air_map = { 14, 18 },
+	},
 };
 
 #define NUM_DEVICES     (sizeof (devices) / sizeof (devices[0]))
