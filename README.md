@@ -24,6 +24,11 @@ Setup
 
 Build-dependencies: gnu-make, a c-compiler, pkg-config, libpango, libcairo,
 lv2 (SDK), alsa (libasound) and openGL (sometimes called: glu, glx, mesa).
+On Debian and derivatives, those can be installed with:
+
+```shell
+sudo apt-get install make gcc pkg-config libpango1.0-dev libcairo2-dev lv2-dev libasound2-dev libglu1-mesa-dev 
+```
 
 ```bash
   git clone https://github.com/x42/scarlett-mixer
